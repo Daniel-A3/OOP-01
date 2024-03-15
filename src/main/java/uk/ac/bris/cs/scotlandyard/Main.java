@@ -26,7 +26,6 @@ public final class Main {
 			controller.onApplicationStop();
 		}
 	}
-// comment for testing git 
 	public static void main(String[] args) { JFXApp.launch(JFXApp.class, args); }
 
 }
