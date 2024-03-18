@@ -39,14 +39,23 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// Constructor input validation
 			//
 			// Checks that mrX is the black piece
-			if(!mrX.piece().webColour().equals("#000000")) throw new IllegalArgumentException("MrX is not the black piece!");
+			if(!mrX.piece().webColour().equals("#000")) throw new IllegalArgumentException("MrX is not the black piece!");
 
-			// Checks that all detectives have different locations
+			List<Player> seen = new ArrayList<Player>();
+			for (Player det:detectives){
+				// Checks that all detectives have different locations
+				for (Player ref : seen){
+					if (det.location() == ref.location()) throw new IllegalArgumentException("Detectives have the same location!");
+				}
 
-			// Checks that the detectives are indeed detective pieces
+				// Check that there are no duplicate game pieces
+				if (!seen.contains(det)){
+					seen.add(det);
+				} else throw new IllegalArgumentException("Duplicate game piece!");
 
-			// Check that there are no duplicate game pieces
-			
+				// Checks that the detectives are indeed detective pieces
+				if (!det.piece().isDetective()) throw new IllegalArgumentException("Detective player is not a detective piece!");
+			}
 
 			if(setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty!");
 		}
@@ -61,7 +70,30 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return Optional.empty();
 		}
 
+
+
 		@Override public Optional<TicketBoard> getPlayerTickets(Piece piece){
+			if (mrX.piece().equals(piece)){
+				TicketBoard tBoard = new TicketBoard() {
+					@Override
+					public int getCount(@Nonnull Ticket ticket) {
+						return mrX.tickets().get(ticket);
+					}
+				};
+				return Optional.of(tBoard);
+			}
+			for(Player player:detectives){
+				TicketBoard tBoard = new TicketBoard() {
+					@Override
+					public int getCount(@Nonnull Ticket ticket) {
+						return player.tickets().get(ticket);
+					}
+				};
+				if (player.piece().equals(piece)){
+					return Optional.of(tBoard);
+				}
+			}
+
 			return Optional.empty();
 		};
 		@Override public ImmutableSet<Piece> getWinner(){ return winner; };
