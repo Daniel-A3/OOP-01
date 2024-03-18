@@ -35,6 +35,19 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			this.log = log;
 			this.mrX = mrX;
 			this.detectives = detectives;
+
+			// Constructor input validation
+			//
+			// Checks that mrX is the black piece
+			if(!mrX.piece().webColour().equals("#000000")) throw new IllegalArgumentException("MrX is not the black piece!");
+
+			// Checks that all detectives have different locations
+
+			// Checks that the detectives are indeed detective pieces
+
+			// Check that there are no duplicate game pieces
+			
+
 			if(setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty!");
 		}
 		@Override public GameSetup getSetup() {  return setup; }
