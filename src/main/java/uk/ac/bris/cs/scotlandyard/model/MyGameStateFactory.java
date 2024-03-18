@@ -40,11 +40,13 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		@Override public GameSetup getSetup() {  return setup; }
 		@Override  public ImmutableSet<Piece> getPlayers() { return remaining; }
 		@Override public Optional<Integer> getDetectiveLocation(Detective detective){
-			if(detective.isDetective()){
-				return Optional.of(detectives.get(detectives.indexOf(detective)).location());
+			for(Player det:detectives) {
+				if (det.piece().equals(detective)) {
+					return Optional.of(det.location());
+				}
 			}
-			else return Optional.empty();
-		};
+			return Optional.empty();
+		}
 
 		@Override public Optional<TicketBoard> getPlayerTickets(Piece piece){
 			return Optional.empty();
