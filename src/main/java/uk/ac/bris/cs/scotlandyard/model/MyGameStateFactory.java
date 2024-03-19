@@ -55,12 +55,84 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 				// Checks that the detectives are indeed detective pieces
 				if (!det.piece().isDetective()) throw new IllegalArgumentException("Detective player is not a detective piece!");
+
+				// Checks that the detective does not have double or secret tickets
+				if (det.has(Ticket.SECRET) ||  det.has(Ticket.DOUBLE)) {
+					throw new IllegalArgumentException("Detectives can't have secret or double tickets");
+				}
 			}
 
 			if(setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty!");
 		}
+
+		// Implementation of TicketBoard using factory pattern
+		// Allows for different implementations of ticket board for mrX and detectives
+
+		// Common product interface for ticket boards already defined in Board.TicketBoard
+
+		// Concrete product #1
+		public class MrXTicketBoard implements TicketBoard{
+			Player MrX;
+			MrXTicketBoard(Player Mrx){
+				this.MrX = Mrx;
+			}
+			@Override
+			public int getCount(@Nonnull Ticket ticket) {
+				return MrX.tickets().get(ticket);
+			}
+		}
+
+		// Concrete product #2
+		public class DetectiveTicketBoard implements TicketBoard{
+			Player Detective;
+			DetectiveTicketBoard(Player Detective){
+				this.Detective = Detective;
+			}
+
+			@Override
+			public int getCount(@Nonnull Ticket ticket) {
+				return Detective.tickets().get(ticket);
+			}
+		}
+
+		// Base Creator
+		public abstract class TicketBoardCreator{
+			public abstract TicketBoard createTicketBoard();
+		}
+
+		// Concrete Creator #1
+		public class MrXTicketBoardCreator extends TicketBoardCreator{
+			Player MrX;
+			MrXTicketBoardCreator(Player Mrx){
+				this.MrX = Mrx;
+			}
+			@Override public TicketBoard createTicketBoard() {
+				return new MrXTicketBoard(this.MrX);
+			}
+		}
+
+		// Concrete Creator #2
+		public class DetectiveTicketBoardCreator extends TicketBoardCreator{
+			Player Detective;
+			DetectiveTicketBoardCreator(Player Detective){
+				this.Detective = Detective;
+			}
+			@Override public TicketBoard createTicketBoard() {
+				return new DetectiveTicketBoard(this.Detective);
+			}
+		}
+
+		// Methods //
 		@Override public GameSetup getSetup() {  return setup; }
-		@Override  public ImmutableSet<Piece> getPlayers() { return remaining; }
+		@Override  public ImmutableSet<Piece> getPlayers() {
+			Set<Piece> players = new HashSet<Piece>();
+			for (Player det:detectives){
+				players.add(det.piece());
+			}
+			players.add(mrX.piece());
+			final ImmutableSet<Piece> playersSet = ImmutableSet.copyOf(players);
+			return playersSet;
+		}
 		@Override public Optional<Integer> getDetectiveLocation(Detective detective){
 			for(Player det:detectives) {
 				if (det.piece().equals(detective)) {
@@ -70,32 +142,17 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return Optional.empty();
 		}
 
-
-
 		@Override public Optional<TicketBoard> getPlayerTickets(Piece piece){
 			if (mrX.piece().equals(piece)){
-				TicketBoard tBoard = new TicketBoard() {
-					@Override
-					public int getCount(@Nonnull Ticket ticket) {
-						return mrX.tickets().get(ticket);
-					}
-				};
-				return Optional.of(tBoard);
+				return Optional.of(new MrXTicketBoardCreator(mrX).createTicketBoard());
 			}
-			for(Player player:detectives){
-				TicketBoard tBoard = new TicketBoard() {
-					@Override
-					public int getCount(@Nonnull Ticket ticket) {
-						return player.tickets().get(ticket);
-					}
-				};
-				if (player.piece().equals(piece)){
-					return Optional.of(tBoard);
+			for(Player player:detectives) {
+				if (player.piece().equals(piece)) {
+					return Optional.of(new DetectiveTicketBoardCreator(player).createTicketBoard());
 				}
 			}
-
 			return Optional.empty();
-		};
+		}
 		@Override public ImmutableSet<Piece> getWinner(){ return winner; };
 		@Override public ImmutableSet<Move> getAvailableMoves(){ return moves;};
 
