@@ -40,6 +40,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			//
 			// Checks that mrX is the black piece
 			if(!mrX.piece().webColour().equals("#000")) throw new IllegalArgumentException("MrX is not the black piece!");
+			// Checks that graph is not empty
+			if (setup.graph.nodes().isEmpty()) throw new IllegalArgumentException("Graph is empty!");
 
 			List<Player> seen = new ArrayList<Player>();
 			for (Player det:detectives){
