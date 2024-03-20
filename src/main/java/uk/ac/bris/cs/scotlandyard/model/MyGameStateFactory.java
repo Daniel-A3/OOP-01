@@ -42,32 +42,29 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// Constructor input validation
 			//
 			// Checks that mrX is the black piece
-			if(!mrX.piece().webColour().equals("#000")) throw new IllegalArgumentException("MrX is not the black piece!");
+			if (!mrX.piece().webColour().equals("#000")) throw new IllegalArgumentException("MrX is not the black piece!");
+
 			// Checks that graph is not empty
 			if (setup.graph.nodes().isEmpty()) throw new IllegalArgumentException("Graph is empty!");
 
-			List<Player> seen = new ArrayList<Player>();
-			for (Player det:detectives){
-				// Checks that all detectives have different locations
-				for (Player ref : seen){
-					if (det.location() == ref.location()) throw new IllegalArgumentException("Detectives have the same location!");
-				}
+			// Checks that all detectives have different locations
+			if (detectives.stream().map(Player::location).distinct().count() != detectives.size())
+				throw new IllegalArgumentException("Detectives locations overlap");
 
-				// Check that there are no duplicate game pieces
-				if (!seen.contains(det)){
-					seen.add(det);
-				} else throw new IllegalArgumentException("Duplicate game piece!");
+			// Check that there are no duplicate detective game pieces
+			if (detectives.stream().map(Player::piece).distinct().count() != detectives.size())
+				throw new IllegalArgumentException("Duplicate game piece!");
 
-				// Checks that the detectives are indeed detective pieces
-				if (!det.piece().isDetective()) throw new IllegalArgumentException("Detective player is not a detective piece!");
+			// Checks that the detectives are indeed detective pieces
+			if (detectives.stream().map(Player::piece).anyMatch(Piece::isMrX))
+				throw new IllegalArgumentException("Detective player is not a detective piece!");
 
-				// Checks that the detective does not have double or secret tickets
-				if (det.has(Ticket.SECRET) ||  det.has(Ticket.DOUBLE)) {
-					throw new IllegalArgumentException("Detectives can't have secret or double tickets");
-				}
-			}
+			// Checks that the detective does not have double or secret tickets
+			if (detectives.stream().anyMatch(player -> player.has(Ticket.SECRET) || player.has(Ticket.DOUBLE)))
+				throw new IllegalArgumentException("Detectives can't have secret or double tickets");
 
-			if(setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty!");
+			// Checks if moves are empty
+			if (setup.moves.isEmpty()) throw new IllegalArgumentException("Moves is empty!");
 		}
 
 		// Implementation of TicketBoard using factory pattern
