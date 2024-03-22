@@ -40,6 +40,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			this.detectives = detectives;
 			this.winner = ImmutableSet.of();
 
+			this.moves = getAvailableMoves();
+
 			// Constructor input validation
 			//
 			// Checks that mrX is the black piece
@@ -127,7 +129,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 		// Methods //
 		@Override public GameSetup getSetup() {  return setup; }
-		@Override  public ImmutableSet<Piece> getPlayers() {
+
+		// Creates an immutable set of all pieces taking a part in the game
+		public ImmutableSet<Piece> allPlayersPresent() {
 			Set<Piece> players = new HashSet<Piece>();
 			for (Player det:detectives){
 				players.add(det.piece());
@@ -136,6 +140,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			final ImmutableSet<Piece> playersSet = ImmutableSet.copyOf(players);
 			return playersSet;
 		}
+
+		@Override  public ImmutableSet<Piece> getPlayers() { return allPlayersPresent(); }
 		@Override public Optional<Integer> getDetectiveLocation(Detective detective){
 			for(Player det:detectives) {
 				if (det.piece().equals(detective)) {
@@ -156,11 +162,25 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			}
 			return Optional.empty();
 		}
-		@Override public ImmutableSet<Piece> getWinner(){ return winner; };
-		@Override public ImmutableSet<Move> getAvailableMoves(){ return moves;};
+		@Override public ImmutableSet<Piece> getWinner(){ return winner; }
+
+		// Puts all available moves of detectives and MrX in a set
+		public Set<Move> combineAvailableMoves() {
+			Set<Move> allAvailableMoves = new HashSet<>();
+			for (Player player:detectives) {
+				allAvailableMoves.addAll(makeSingleMoves(setup, detectives, player, player.location()));
+			}
+			allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
+			return allAvailableMoves;
+		}
+
+		@Override public ImmutableSet<Move> getAvailableMoves(){ return ImmutableSet.copyOf(combineAvailableMoves()); }
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log;};
-		@Override public GameState advance(Move move) {  return null;  }
+		@Override public GameState advance(Move move){
+			if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
+			return new MyGameState(setup, remaining, log, mrX, detectives);
+		}
 		private static Set<SingleMove> makeSingleMoves(GameSetup setup, List<Player> detectives, Player player, int source){
 
 			// TODO create an empty collection of some sort, say, HashSet, to store all the SingleMove we generate
@@ -169,22 +189,29 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			for(int destination : setup.graph.adjacentNodes(source)) {
 				// TODO find out if destination is occupied by a detective
 				//  if the location is occupied, don't add to the collection of moves to return
-				if(detectives.stream().map(Player::location).anyMatch(Predicate.isEqual(destination))) continue;
+				if (detectives.stream().map(Player::location).noneMatch(location -> location.equals(destination))) {
 
-				for(Transport t : setup.graph.edgeValueOrDefault(source, destination, ImmutableSet.of()) ) {
-					// TODO find out if the player has the required tickets
-					//  if it does, construct a SingleMove and add it the collection of moves to return
-					if (player.has(t.requiredTicket())) {
-						SingleMoveSet.add(new SingleMove(player.piece(), source, t.requiredTicket(), destination));
+					for (Transport t : setup.graph.edgeValueOrDefault(source, destination, ImmutableSet.of())) {
+						// TODO find out if the player has the required tickets
+						//  if it does, construct a SingleMove and add it the collection of moves to return
+						if (player.has(t.requiredTicket())) {
+							SingleMoveSet.add(new SingleMove(player.piece(), source, t.requiredTicket(), destination));
+						}
+					}
+					// TODO consider the rules of secret moves here
+					//  add moves to the destination via a secret ticket if there are any left with the player
+					if (player.has(Ticket.SECRET)) {
+						SingleMoveSet.add(new SingleMove(player.piece(), source, Ticket.SECRET, destination));
 					}
 				}
-
-				// TODO consider the rules of secret moves here
-				//  add moves to the destination via a secret ticket if there are any left with the player
 			}
 
 			// TODO return the collection of moves
 			return SingleMoveSet;
+		}
+		private static Set<SingleMove> makeDoubleMoves(GameSetup setup, List<Player> detectives, Player player, int source){
+			// Make sure detectives cant
+			return null;
 		}
 	}
 	@Nonnull @Override public GameState build(
