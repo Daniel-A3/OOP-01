@@ -3,6 +3,7 @@ package uk.ac.bris.cs.scotlandyard.model;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.util.*;
+import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.Immutable;
 
@@ -160,14 +161,37 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log;};
 		@Override public GameState advance(Move move) {  return null;  }
+		private static Set<SingleMove> makeSingleMoves(GameSetup setup, List<Player> detectives, Player player, int source){
+
+			// TODO create an empty collection of some sort, say, HashSet, to store all the SingleMove we generate
+			Set<SingleMove> SingleMoveSet = new HashSet<>();
+
+			for(int destination : setup.graph.adjacentNodes(source)) {
+				// TODO find out if destination is occupied by a detective
+				//  if the location is occupied, don't add to the collection of moves to return
+				if(detectives.stream().map(Player::location).anyMatch(Predicate.isEqual(destination))) continue;
+
+				for(Transport t : setup.graph.edgeValueOrDefault(source, destination, ImmutableSet.of()) ) {
+					// TODO find out if the player has the required tickets
+					//  if it does, construct a SingleMove and add it the collection of moves to return
+					if (player.has(t.requiredTicket())) {
+						SingleMoveSet.add(new SingleMove(player.piece(), source, t.requiredTicket(), destination));
+					}
+				}
+
+				// TODO consider the rules of secret moves here
+				//  add moves to the destination via a secret ticket if there are any left with the player
+			}
+
+			// TODO return the collection of moves
+			return SingleMoveSet;
+		}
 	}
 	@Nonnull @Override public GameState build(
 			GameSetup setup,
 			Player mrX,
 			ImmutableList<Player> detectives) {
 			return new MyGameState(setup, ImmutableSet.of(MrX.MRX), ImmutableList.of(), mrX, detectives);
-		//throw new RuntimeException("Implement me!");
-
 	}
 
 }
