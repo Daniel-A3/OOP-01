@@ -176,7 +176,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 				else {
 					for (Player det : detectives){
 						if (det.piece().equals(player)){
-
+							allAvailableMoves.addAll(makeSingleMoves(setup, detectives, det, det.location()));
 						}
 					}
 				}
@@ -236,11 +236,10 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// Iterates through the available single moves from the detectives location, and for each find all the possible
 			// double moves.
 			for (SingleMove singleMove1 : SingleMoveSet1) {
-				if (mrX.has(singleMove1.ticket))
 				SingleMoveSet2 = makeSingleMoves(setup, detectives, mrX, singleMove1.destination);
 				for (SingleMove singleMove2 : SingleMoveSet2) {
 					if (mrX.has(Ticket.DOUBLE)) {
-						// sets condition to ckeck has enough tickets and it's not a reveal move to produce a double move
+						// sets condition to check has enough tickets and it's not a reveal move to produce a double move
 						if (((singleMove1.ticket != singleMove2.ticket)
 						|| (singleMove1.ticket == singleMove2.ticket && mrX.hasAtLeast(singleMove2.ticket, 2)))
 						&& (setup.moves.contains(false))){
