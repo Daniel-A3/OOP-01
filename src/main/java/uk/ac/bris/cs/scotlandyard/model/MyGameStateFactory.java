@@ -155,7 +155,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			if (mrX.piece().equals(piece)){
 				return Optional.of(new MrXTicketBoardCreator(mrX).createTicketBoard());
 			}
-			for(Player player:detectives) {
+			for (Player player:detectives) {
 				if (player.piece().equals(piece)) {
 					return Optional.of(new DetectiveTicketBoardCreator(player).createTicketBoard());
 				}
@@ -167,14 +167,29 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		// Puts all available moves of detectives and MrX in a set
 		public Set<Move> combineAvailableMoves() {
 			Set<Move> allAvailableMoves = new HashSet<>();
-			for (Player player:detectives) {
-				allAvailableMoves.addAll(makeSingleMoves(setup, detectives, player, player.location()));
+
+			for (Piece player : remaining) {
+				if (mrX.piece().equals(player)){
+					allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
+					allAvailableMoves.addAll(makeDoubleMoves(setup, detectives, mrX, mrX.location()));
+				}
+				else {
+					for (Player det : detectives){
+						if (det.piece().equals(player)){
+
+						}
+					}
+				}
 			}
-			allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
+//			for (Player player:detectives) {
+//				allAvailableMoves.addAll(makeSingleMoves(setup, detectives, player, player.location()));
+//			}
+//			allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
+//			allAvailableMoves.addAll(makeDoubleMoves(setup, detectives, mrX, mrX.location()));
 			return allAvailableMoves;
 		}
 
-		@Override public ImmutableSet<Move> getAvailableMoves(){ return ImmutableSet.copyOf(combineAvailableMoves()); }
+		@Override public ImmutableSet<Move> getAvailableMoves(){  return ImmutableSet.copyOf(combineAvailableMoves());  }
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log;};
 		@Override public GameState advance(Move move){
@@ -186,7 +201,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// TODO create an empty collection of some sort, say, HashSet, to store all the SingleMove we generate
 			Set<SingleMove> SingleMoveSet = new HashSet<>();
 
-			for(int destination : setup.graph.adjacentNodes(source)) {
+			for (int destination : setup.graph.adjacentNodes(source)) {
 				// TODO find out if destination is occupied by a detective
 				//  if the location is occupied, don't add to the collection of moves to return
 				if (detectives.stream().map(Player::location).noneMatch(location -> location.equals(destination))) {
@@ -209,9 +224,33 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// TODO return the collection of moves
 			return SingleMoveSet;
 		}
-		private static Set<SingleMove> makeDoubleMoves(GameSetup setup, List<Player> detectives, Player player, int source){
-			// Make sure detectives cant
-			return null;
+		private static Set<DoubleMove> makeDoubleMoves(GameSetup setup, List<Player> detectives, Player mrX, int source){
+
+			if (mrX.isDetective()) throw new IllegalArgumentException("Only MrX can do double move");
+
+			Set<DoubleMove> DoubleMoveSet = new HashSet<>();
+			Set<SingleMove> SingleMoveSet1 = new HashSet<>();
+			Set<SingleMove> SingleMoveSet2 = new HashSet<>();
+			SingleMoveSet1 = makeSingleMoves(setup, detectives, mrX, source);
+
+			// Iterates through the available single moves from the detectives location, and for each find all the possible
+			// double moves.
+			for (SingleMove singleMove1 : SingleMoveSet1) {
+				if (mrX.has(singleMove1.ticket))
+				SingleMoveSet2 = makeSingleMoves(setup, detectives, mrX, singleMove1.destination);
+				for (SingleMove singleMove2 : SingleMoveSet2) {
+					if (mrX.has(Ticket.DOUBLE)) {
+						// sets condition to ckeck has enough tickets and it's not a reveal move to produce a double move
+						if (((singleMove1.ticket != singleMove2.ticket)
+						|| (singleMove1.ticket == singleMove2.ticket && mrX.hasAtLeast(singleMove2.ticket, 2)))
+						&& (setup.moves.contains(false))){
+							DoubleMoveSet.add(new DoubleMove(mrX.piece(), source, singleMove1.ticket, singleMove1.destination,
+								singleMove2.ticket, singleMove2.destination));
+						}
+					}
+				}
+			}
+			return DoubleMoveSet;
 		}
 	}
 	@Nonnull @Override public GameState build(
