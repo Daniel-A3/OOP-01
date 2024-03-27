@@ -3,9 +3,8 @@ package uk.ac.bris.cs.scotlandyard.model;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.util.*;
-import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
-import javax.annotation.concurrent.Immutable;
 
 import uk.ac.bris.cs.scotlandyard.model.Board.GameState;
 import uk.ac.bris.cs.scotlandyard.model.Move.*;
@@ -165,7 +164,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		@Override public ImmutableSet<Piece> getWinner(){ return winner; }
 
 		// Puts all available moves of detectives and MrX in a set
-		public Set<Move> combineAvailableMoves() {
+		public Set<Move> combineAvailableMoves(Set<Piece> remaining) {
 			Set<Move> allAvailableMoves = new HashSet<>();
 
 			for (Piece player : remaining) {
@@ -189,11 +188,124 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return allAvailableMoves;
 		}
 
-		@Override public ImmutableSet<Move> getAvailableMoves(){  return ImmutableSet.copyOf(combineAvailableMoves());  }
+		@Override public ImmutableSet<Move> getAvailableMoves(){  return ImmutableSet.copyOf(combineAvailableMoves(remaining));  }
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log;};
+
+		// returns the player that has made the move and updates their location and tickets
+		public Player currentPlayer(Move move){
+
+
+			if (move.commencedBy().isMrX()){
+				return mrX;
+			}
+			for (Player det : detectives){
+				if (det.piece().equals(move.commencedBy())) {
+					return det;
+				}
+			}
+			throw new IllegalArgumentException("Illegal move");
+		}
+		// remove player that has made move from remaining list
+		public ImmutableSet<Piece> removeAfterMove(Player current){
+            Set<Piece> newRemaining = new HashSet<Piece>(remaining);
+			if (current.isMrX()){
+				newRemaining.remove(mrX.piece());
+				// Adds all detectives with legal moves to the remaining
+				// after mrX does his move
+				newRemaining.addAll(combineAvailableMoves(detectives.stream().map(Player::piece).collect(Collectors.toCollection(HashSet::new)))
+						.stream()
+						.map(Move::commencedBy)
+						.collect(Collectors.toCollection(HashSet::new)));
+			}
+			else{
+				// Removes detective after their move
+				// and adds mrX if all detectives have done their moves
+				newRemaining.remove(current.piece());
+				if (newRemaining.isEmpty()){ newRemaining.add(mrX.piece());}
+			}
+			remaining = ImmutableSet.copyOf(newRemaining);
+			return remaining;
+		}
+		public void updateLocation(Move move){
+			int newLocation = move.accept(new Visitor<Integer>(){
+				@Override public Integer visit(SingleMove singleMove){ return singleMove.destination; }
+				@Override public Integer visit(DoubleMove doubleMove){ return doubleMove.destination2; }
+			});
+			if (move.commencedBy().isMrX()){ mrX = mrX.at(newLocation);}
+			else{
+				List<Player> newDetectives = new ArrayList<>(detectives);
+				for (Player det : newDetectives) {
+					if (det.piece().equals(move.commencedBy())) {
+						newDetectives.set(newDetectives.indexOf(det), det.at(newLocation));
+						detectives = List.copyOf(newDetectives);
+					}
+				}
+			}
+		}
+		public void updateTickets(Move move, Player current){
+			int doubleTicket  = 0;
+			Iterable<Ticket> tickets = move.accept(new Visitor<Iterable<Ticket>>() {
+
+				@Override public Iterable<Ticket> visit(SingleMove singleMove) {
+					List<Ticket> ticket = new ArrayList<>();
+					ticket.add(singleMove.ticket);
+					return ticket;
+				}
+				@Override public Iterable<Ticket> visit(DoubleMove doubleMove) {
+					mrX = mrX.use(Ticket.DOUBLE);
+					List<Ticket> tickets = new ArrayList<>();
+					tickets.add(doubleMove.ticket1);
+					tickets.add(doubleMove.ticket2);
+					return tickets;
+				}
+			});
+			// Takes used tickets away from mrx
+			if (current.isMrX()){ mrX = mrX.use(tickets); }
+			// Takes used ticket away form the detective and gives it to mrX
+			else{
+				mrX = mrX.give(tickets);
+				List<Player> newDetectives = new ArrayList<>(detectives);
+				newDetectives.set(newDetectives.indexOf(current), current.use(tickets));
+				detectives = List.copyOf(newDetectives);
+			}
+		}
+		public void updateLog(Move move) {
+			List<LogEntry> newLog = new ArrayList<>(log);
+			List<LogEntry> addLog = move.accept(new Visitor<List<LogEntry>>() {
+
+				@Override public List<LogEntry> visit(SingleMove singleMove) {
+					if (!setup.moves.get(log.size())) {
+						List<LogEntry> unrevealed = new ArrayList<>();
+						unrevealed.add(LogEntry.hidden(singleMove.ticket));
+						return unrevealed;
+					} else {
+						List<LogEntry> revealed = new ArrayList<>();
+						revealed.add(LogEntry.reveal(singleMove.ticket, singleMove.destination));
+						return revealed;
+					}
+				}
+				@Override public List<LogEntry> visit(DoubleMove doubleMove) {
+					List<LogEntry> doubleLog = new ArrayList<>();
+					if(setup.moves.get(log.size())){
+						doubleLog.add(LogEntry.reveal(doubleMove.ticket1, doubleMove.destination1));
+					}
+					else{ doubleLog.add(LogEntry.hidden(doubleMove.ticket1)); }
+					if(setup.moves.get(log.size()+1)){
+						doubleLog.add(LogEntry.reveal(doubleMove.ticket2, doubleMove.destination2));
+					} else { doubleLog.add(LogEntry.hidden(doubleMove.ticket2)); }
+					return doubleLog;
+				}
+			});
+			newLog.addAll(addLog);
+			log = ImmutableList.copyOf(newLog);
+		}
 		@Override public GameState advance(Move move){
 			if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
+			updateLocation(move);
+			updateTickets(move, currentPlayer(move));
+			remaining = ImmutableSet.copyOf(removeAfterMove(currentPlayer(move)));
+			if(move.commencedBy() == mrX.piece()){ updateLog(move);}
 			return new MyGameState(setup, remaining, log, mrX, detectives);
 		}
 		private static Set<SingleMove> makeSingleMoves(GameSetup setup, List<Player> detectives, Player player, int source){
@@ -242,7 +354,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 						// sets condition to check has enough tickets and it's not a reveal move to produce a double move
 						if (((singleMove1.ticket != singleMove2.ticket)
 						|| (singleMove1.ticket == singleMove2.ticket && mrX.hasAtLeast(singleMove2.ticket, 2)))
-						&& (setup.moves.contains(false))){
+						&& (setup.moves.size()>=2)){
 							DoubleMoveSet.add(new DoubleMove(mrX.piece(), source, singleMove1.ticket, singleMove1.destination,
 								singleMove2.ticket, singleMove2.destination));
 						}
