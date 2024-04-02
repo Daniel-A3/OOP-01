@@ -37,9 +37,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			this.log = log;
 			this.mrX = mrX;
 			this.detectives = detectives;
-			this.winner = getWinner();
 
 			this.moves = getAvailableMoves();
+			this.winner = getWinner();
 
 			// Constructor input validation
 			//
@@ -202,12 +202,23 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// Second implementation attempt
 			// java.lang.NullPointerException: Cannot invoke "com.google.common.collect.ImmutableSet.iterator()" because "this.moves" is null
 			// TODO why is this.moves null????!!!
-			for (Move move : moves) {
-				if (move.commencedBy() == mrX.piece()) {
-					mrXHasMove = true;
-				}
-				else {
-					detHaveMove = true;
+			if (!(moves == null)) {
+				if (!moves.isEmpty()) {
+					for (Move move : moves) {
+						if (move.commencedBy() == mrX.piece()) {
+							mrXHasMove = true;
+						} else {
+							detHaveMove = true;
+						}
+					}
+					// Detectives win if mrX has no moves
+					if (!mrXHasMove) {
+						detWon = true;
+					}
+					// Mr X wins if the detectives have no more moves left
+					if (!detHaveMove) {
+						mrXWon = true;
+					}
 				}
 			}
 
@@ -218,10 +229,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 //					|| mrX.hasAtLeast(Ticket.SECRET, 1))) {
 //				detWon = true;
 //			}
-			// Detectives win if mrX has no moves
-			if (!mrXHasMove) { detWon = true; }
-			// Mr X wins if the detectives have no more moves left
-			if (!detHaveMove) { mrXWon = true; }
+
 			// Mr X wins if all detectives run out of tickets
 			if (!AllDetHaveNotRunOutOfTickets) { mrXWon = true; }
 
