@@ -165,10 +165,10 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		public Set<Piece> determineWinner(){
 			Set<Piece> winnerPieces = new HashSet<>();
 			boolean detWon = false;
-			boolean detHaveMove = false;
+			//boolean detHaveMove = false;
 			boolean AllDetHaveNotRunOutOfTickets = false;
 
-			boolean mrXHasMove = false;
+			//boolean mrXHasMove = false;
 			boolean mrXWon = false;
 
 			// Checks if detectives have caught mrX
@@ -202,25 +202,25 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// Second implementation attempt
 			// java.lang.NullPointerException: Cannot invoke "com.google.common.collect.ImmutableSet.iterator()" because "this.moves" is null
 			// TODO why is this.moves null????!!!
-			if (!(moves == null)) {
-				if (!moves.isEmpty()) {
-					for (Move move : moves) {
-						if (move.commencedBy() == mrX.piece()) {
-							mrXHasMove = true;
-						} else {
-							detHaveMove = true;
-						}
-					}
-					// Detectives win if mrX has no moves
-					if (!mrXHasMove) {
-						detWon = true;
-					}
-					// Mr X wins if the detectives have no more moves left
-					if (!detHaveMove) {
-						mrXWon = true;
-					}
-				}
-			}
+//			if (!(moves == null)) {
+//				if (!moves.isEmpty()) {
+//					for (Move move : moves) {
+//						if (move.commencedBy() == mrX.piece()) {
+//							mrXHasMove = true;
+//						} else {
+//							detHaveMove = true;
+//						}
+//					}
+//					// Detectives win if mrX has no moves
+//					if (!mrXHasMove) {
+//						detWon = true;
+//					}
+//					// Mr X wins if the detectives have no more moves left
+//					if (!detHaveMove) {
+//						mrXWon = true;
+//					}
+//				}
+//			}
 
 			// Checks if MrX is out of tickets
 //			if (!(mrX.hasAtLeast(Ticket.TAXI, 1)
@@ -277,6 +277,12 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		@Override public ImmutableSet<Move> getAvailableMoves(){  return ImmutableSet.copyOf(combineAvailableMoves(remaining));  }
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log; }
+
+		@Override public void chooseMove(@Nonnull Move move){
+			// TODO Advance the model with move, then notify all observers of what what just happened.
+			//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
+			
+		}
 
 		// returns the player that has made the move and updates their location and tickets
 		public Player currentPlayer(Move move){
