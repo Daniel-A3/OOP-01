@@ -26,12 +26,15 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		private List<Player> detectives;
 		private ImmutableSet<Move> moves;
 		private ImmutableSet<Piece> winner;
+		public Model events;
+
 		private MyGameState(
 				final GameSetup setup,
 				final ImmutableSet<Piece> remaining,
 				final ImmutableList<LogEntry> log,
 				final Player mrX,
 				final List<Player> detectives){
+
 			this.setup = setup;
 			this.remaining = remaining;
 			this.log = log;
@@ -40,6 +43,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 			this.moves = getAvailableMoves();
 			this.winner = getWinner();
+
+			this.events = new MyModelFactory().build(setup, mrX, (ImmutableList<Player>) detectives);
 
 			// Constructor input validation
 			//
@@ -274,15 +279,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			return allAvailableMoves;
 		}
 
-		@Override public ImmutableSet<Move> getAvailableMoves(){  return ImmutableSet.copyOf(combineAvailableMoves(remaining));  }
+		@Override public ImmutableSet<Move> getAvailableMoves(){ return ImmutableSet.copyOf(combineAvailableMoves(remaining)); }
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log; }
-
-		@Override public void chooseMove(@Nonnull Move move){
-			// TODO Advance the model with move, then notify all observers of what what just happened.
-			//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
-			
-		}
 
 		// returns the player that has made the move and updates their location and tickets
 		public Player currentPlayer(Move move){
