@@ -18,10 +18,10 @@ public final class MyModelFactory implements Factory<Model> {
 
 	private final class MyModel implements Model {
 		Set<Observer> observers = new HashSet<Observer>();
-		private Board currentBoard;
+		private final Board.GameState currentBoard;
 
-		private MyModel(Board initialBoard) {
-			this.currentBoard = initialBoard;
+		private MyModel(GameSetup setup, Player mrX, ImmutableList<Player> detectives) {
+			this.currentBoard = new MyGameStateFactory().build(setup, mrX, detectives);
 		}
 
 		@Nonnull @Override public Board getCurrentBoard() { return currentBoard; }
@@ -50,7 +50,10 @@ public final class MyModelFactory implements Factory<Model> {
 			// TODO Advance the model with move, then notify all observers of what what just happened.
 			//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
 			if (currentBoard.getWinner().isEmpty()) {
-				currentBoard.GameState.advance(move);
+				currentBoard.advance(move);
+				for (Observer observer : observers) {
+					observer.onModelChanged(currentBoard, Observer.Event.MOVE_MADE);
+				}
 			}
 		}
 	}
@@ -59,6 +62,6 @@ public final class MyModelFactory implements Factory<Model> {
 	                                      Player mrX,
 	                                      ImmutableList<Player> detectives) {
 		// TODO
-		return new MyModel(Board board);
+		return new MyModel(setup, mrX, detectives);
 	}
 }

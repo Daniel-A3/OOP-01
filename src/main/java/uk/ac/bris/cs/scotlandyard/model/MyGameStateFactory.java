@@ -44,8 +44,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			this.moves = getAvailableMoves();
 			this.winner = getWinner();
 
-			this.events = new MyModelFactory().build(setup, mrX, (ImmutableList<Player>) detectives);
-
 			// Constructor input validation
 			//
 			// Checks that mrX is the black piece
@@ -170,8 +168,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		public Set<Piece> determineWinner(){
 			Set<Piece> winnerPieces = new HashSet<>();
 			boolean detWon = false;
-			//boolean detHaveMove = false;
 			boolean AllDetHaveNotRunOutOfTickets = false;
+			Set<Piece> detectivePieces = new HashSet<>();
 
 			//boolean mrXHasMove = false;
 			boolean mrXWon = false;
@@ -186,57 +184,27 @@ public final class MyGameStateFactory implements Factory<GameState> {
 					|| det.hasAtLeast(Ticket.UNDERGROUND, 1)){
 					AllDetHaveNotRunOutOfTickets = true;
 				}
+				detectivePieces.add(det.piece());
 			}
-			// Checks if MrX has any available moves, if not, then the detectives win
-			//if (setup.moves.contains(mrX.piece()))
-
-			// TODO something is wrong with the logic here, causes most of the tests in GameStateGameOverTest to fail...
-//			if (this.moves != null) {
-//				for (Move availableMove : moves) {
-//					if (availableMove.commencedBy() == mrX.piece()) {
-//						mrXHasMove = true;
-//					}
-//				}
-//			}
-//			if (!mrXHasMove) { detWon = true; }
-
-			// Mr X won if he has filled out his log and the detectives have not caught
-			// him with their final moves
-			//if (log.size())
-
-			// Second implementation attempt
-			// java.lang.NullPointerException: Cannot invoke "com.google.common.collect.ImmutableSet.iterator()" because "this.moves" is null
-			// TODO why is this.moves null????!!!
-//			if (!(moves == null)) {
-//				if (!moves.isEmpty()) {
-//					for (Move move : moves) {
-//						if (move.commencedBy() == mrX.piece()) {
-//							mrXHasMove = true;
-//						} else {
-//							detHaveMove = true;
-//						}
-//					}
-//					// Detectives win if mrX has no moves
-//					if (!mrXHasMove) {
-//						detWon = true;
-//					}
-//					// Mr X wins if the detectives have no more moves left
-//					if (!detHaveMove) {
-//						mrXWon = true;
-//					}
-//				}
-//			}
-
-			// Checks if MrX is out of tickets
-//			if (!(mrX.hasAtLeast(Ticket.TAXI, 1)
-//					|| mrX.hasAtLeast(Ticket.BUS, 1)
-//					|| mrX.hasAtLeast(Ticket.UNDERGROUND, 1)
-//					|| mrX.hasAtLeast(Ticket.SECRET, 1))) {
-//				detWon = true;
-//			}
 
 			// Mr X wins if all detectives run out of tickets
 			if (!AllDetHaveNotRunOutOfTickets) { mrXWon = true; }
+
+			if (combineAvailableMoves(detectivePieces).isEmpty() && !remaining.contains(mrX.piece())){
+				mrXWon = true;
+			}
+			// Detectives win if Mr X is out of moves
+			if (combineAvailableMoves(ImmutableSet.of(mrX.piece())).isEmpty() && remaining.contains(mrX.piece())) {
+				detWon = true;
+			}
+			// Mr X wins if TODO
+			if (remaining.contains(mrX.piece())) {
+				if (moves != null) {
+					if (log.size() == moves.size()) {
+						mrXWon = true;
+					}
+				}
+			}
 
 			// Adds all the detectives to the winner set if the detectives won
 			if (detWon) {
@@ -262,24 +230,26 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		public Set<Move> combineAvailableMoves(Set<Piece> remaining) {
 			Set<Move> allAvailableMoves = new HashSet<>();
 
-			if (getWinner().isEmpty()) {
-				for (Piece player : remaining) {
-					if (mrX.piece().equals(player)) {
-						allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
-						allAvailableMoves.addAll(makeDoubleMoves(setup, detectives, mrX, mrX.location()));
-					} else {
-						for (Player det : detectives) {
-							if (det.piece().equals(player)) {
-								allAvailableMoves.addAll(makeSingleMoves(setup, detectives, det, det.location()));
-							}
+			//if (getWinner().isEmpty()) {
+			for (Piece player : remaining) {
+				if (mrX.piece().equals(player)) {
+					allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
+					allAvailableMoves.addAll(makeDoubleMoves(setup, detectives, mrX, mrX.location()));
+				} else {
+					for (Player det : detectives) {
+						if (det.piece().equals(player)) {
+							allAvailableMoves.addAll(makeSingleMoves(setup, detectives, det, det.location()));
 						}
 					}
 				}
 			}
+			//}
 			return allAvailableMoves;
 		}
 
-		@Override public ImmutableSet<Move> getAvailableMoves(){ return ImmutableSet.copyOf(combineAvailableMoves(remaining)); }
+		@Override public ImmutableSet<Move> getAvailableMoves(){
+			if (!getWinner().isEmpty()) { return ImmutableSet.of(); }
+			return ImmutableSet.copyOf(combineAvailableMoves(remaining)); }
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log; }
 
