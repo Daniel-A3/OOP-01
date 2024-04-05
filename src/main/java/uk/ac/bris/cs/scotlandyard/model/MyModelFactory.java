@@ -26,7 +26,7 @@ public final class MyModelFactory implements Factory<Model> {
 
 		@Nonnull @Override public Board getCurrentBoard() { return currentBoard; }
 
-		@Override  public void registerObserver(@Nonnull Observer observer) {
+		@Override public void registerObserver(@Nonnull Observer observer) {
 //            Set<Observer> observerSet = new HashSet<Observer>(observers);
 //			observerSet.add(observer);
 //			observers = ImmutableSet.copyOf(observerSet);
@@ -35,8 +35,7 @@ public final class MyModelFactory implements Factory<Model> {
 			}
 		}
 
-		@Override
-		public void unregisterObserver(@Nonnull Observer observer) {
+		@Override public void unregisterObserver(@Nonnull Observer observer) {
 //			Set<Observer> observerSet = new HashSet<Observer>(observers);
 //			observerSet.remove(observer);
 //			observers = ImmutableSet.copyOf(observerSet);
@@ -51,7 +50,7 @@ public final class MyModelFactory implements Factory<Model> {
 			// TODO Advance the model with move, then notify all observers of what what just happened.
 			//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
 			if (currentBoard.getWinner().isEmpty()) {
-				//currentBoard.
+				currentBoard.GameState.advance(move);
 			}
 		}
 	}

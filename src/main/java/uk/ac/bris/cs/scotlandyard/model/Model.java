@@ -45,11 +45,6 @@ public interface Model {
 	 * @param observer the observer to register
 	 */
 	void unregisterObserver(@Nonnull Observer observer);
-
-	void registerObserver(@Nonnull MyModelFactory.MyModel.Observer observer);
-
-	void unregisterObserver(@Nonnull MyModelFactory.MyModel.Observer observer);
-
 	/**
 	 * @return all currently registered observers of the model
 	 */
