@@ -26,7 +26,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		private List<Player> detectives;
 		private ImmutableSet<Move> moves;
 		private ImmutableSet<Piece> winner;
-		public Model events;
 
 		private MyGameState(
 				final GameSetup setup,
@@ -199,10 +198,8 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			}
 			// Mr X wins if TODO
 			if (remaining.contains(mrX.piece())) {
-				if (moves != null) {
-					if (log.size() == moves.size()) {
-						mrXWon = true;
-					}
+				if (log.size() == setup.moves.size()) {
+					mrXWon = true;
 				}
 			}
 

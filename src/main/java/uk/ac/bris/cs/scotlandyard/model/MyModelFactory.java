@@ -27,20 +27,21 @@ public final class MyModelFactory implements Factory<Model> {
 		@Nonnull @Override public Board getCurrentBoard() { return currentBoard; }
 
 		@Override public void registerObserver(@Nonnull Observer observer) {
-//            Set<Observer> observerSet = new HashSet<Observer>(observers);
-//			observerSet.add(observer);
-//			observers = ImmutableSet.copyOf(observerSet);
-			if (!observers.contains(observer)) {
-				observers.add(observer);
-			}
+			if (observers.contains(observer)) {
+				throw new IllegalArgumentException("Can't register the same observer twice");
+			} else if (observer == null) {
+				throw new NullPointerException("Observer can't be null");
+			} else { observers.add(observer); }
 		}
 
 		@Override public void unregisterObserver(@Nonnull Observer observer) {
-//			Set<Observer> observerSet = new HashSet<Observer>(observers);
-//			observerSet.remove(observer);
-//			observers = ImmutableSet.copyOf(observerSet);
-			if (observers.contains(observer)) {
+			if (observer == null) {
+				throw new NullPointerException("Observer can't be null");
+			}
+			else if (observers.contains(observer)) {
 				observers.remove(observer);
+			} else {
+				throw new IllegalArgumentException("Can't unregister an observer who has not been registered yet");
 			}
 		}
 
@@ -49,10 +50,18 @@ public final class MyModelFactory implements Factory<Model> {
 		@Override public void chooseMove(@Nonnull Move move) {
 			// TODO Advance the model with move, then notify all observers of what what just happened.
 			//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
-			if (currentBoard.getWinner().isEmpty()) {
-				currentBoard.advance(move);
-				for (Observer observer : observers) {
-					observer.onModelChanged(currentBoard, Observer.Event.MOVE_MADE);
+			int gameOver = 0;
+
+			currentBoard.advance(move);
+			if (!currentBoard.getWinner().isEmpty()) {
+				gameOver = 1;
+			}
+			for (Observer observer : observers) {
+				switch (gameOver) {
+					case 0:
+						observer.onModelChanged(currentBoard, Observer.Event.MOVE_MADE);
+					case 1:
+						observer.onModelChanged(currentBoard, Observer.Event.GAME_OVER);
 				}
 			}
 		}
