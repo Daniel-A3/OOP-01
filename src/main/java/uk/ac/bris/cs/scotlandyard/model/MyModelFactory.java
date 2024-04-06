@@ -50,18 +50,17 @@ public final class MyModelFactory implements Factory<Model> {
 		@Override public void chooseMove(@Nonnull Move move) {
 			// TODO Advance the model with move, then notify all observers of what what just happened.
 			//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
-			int gameOver = 0;
+			boolean gameOver = false;
 
 			currentBoard.advance(move);
 			if (!currentBoard.getWinner().isEmpty()) {
-				gameOver = 1;
+				gameOver = true;
 			}
 			for (Observer observer : observers) {
-				switch (gameOver) {
-					case 0:
-						observer.onModelChanged(currentBoard, Observer.Event.MOVE_MADE);
-					case 1:
-						observer.onModelChanged(currentBoard, Observer.Event.GAME_OVER);
+				if (gameOver) {
+					observer.onModelChanged(currentBoard, Observer.Event.GAME_OVER);
+				} else {
+					observer.onModelChanged(currentBoard, Observer.Event.MOVE_MADE);
 				}
 			}
 		}

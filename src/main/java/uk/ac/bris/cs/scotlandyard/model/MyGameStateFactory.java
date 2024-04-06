@@ -227,7 +227,6 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		public Set<Move> combineAvailableMoves(Set<Piece> remaining) {
 			Set<Move> allAvailableMoves = new HashSet<>();
 
-			//if (getWinner().isEmpty()) {
 			for (Piece player : remaining) {
 				if (mrX.piece().equals(player)) {
 					allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
@@ -240,13 +239,13 @@ public final class MyGameStateFactory implements Factory<GameState> {
 					}
 				}
 			}
-			//}
 			return allAvailableMoves;
 		}
 
 		@Override public ImmutableSet<Move> getAvailableMoves(){
 			if (!getWinner().isEmpty()) { return ImmutableSet.of(); }
-			return ImmutableSet.copyOf(combineAvailableMoves(remaining)); }
+			else { return ImmutableSet.copyOf(combineAvailableMoves(remaining)); }
+		}
 
 		@Override public ImmutableList<LogEntry> getMrXTravelLog(){ return log; }
 
