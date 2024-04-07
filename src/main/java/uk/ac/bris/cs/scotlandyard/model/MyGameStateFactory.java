@@ -356,11 +356,13 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			log = ImmutableList.copyOf(newLog);
 		}
 		@Override public GameState advance(Move move){
-			if(!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
+			if (!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
+			if (!winner.isEmpty()) throw new IllegalArgumentException("Game is Over!");
 			updateLocation(move);
 			updateTickets(move, currentPlayer(move));
 			remaining = ImmutableSet.copyOf(removeAfterMove(currentPlayer(move)));
 			if(move.commencedBy() == mrX.piece()){ updateLog(move);}
+			winner = ImmutableSet.copyOf(determineWinner());
 			return new MyGameState(setup, remaining, log, mrX, detectives);
 		}
 		private static Set<SingleMove> makeSingleMoves(GameSetup setup, List<Player> detectives, Player player, int source){

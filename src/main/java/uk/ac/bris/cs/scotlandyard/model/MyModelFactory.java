@@ -18,7 +18,7 @@ public final class MyModelFactory implements Factory<Model> {
 
 	private final class MyModel implements Model {
 		Set<Observer> observers = new HashSet<Observer>();
-		private final Board.GameState currentBoard;
+		private Board.GameState currentBoard;
 
 		private MyModel(GameSetup setup, Player mrX, ImmutableList<Player> detectives) {
 			this.currentBoard = new MyGameStateFactory().build(setup, mrX, detectives);
@@ -50,12 +50,10 @@ public final class MyModelFactory implements Factory<Model> {
 		@Override public void chooseMove(@Nonnull Move move) {
 			// TODO Advance the model with move, then notify all observers of what what just happened.
 			//  you may want to use getWinner() to determine whether to send out Event.MOVE_MADE or Event.GAME_OVER
-			boolean gameOver = false;
+			if (!currentBoard.getAvailableMoves().contains(move)) throw new IllegalArgumentException("Game is Over!");
+			currentBoard = currentBoard.advance(move);
+            boolean gameOver = !currentBoard.getWinner().isEmpty();
 
-			currentBoard.advance(move);
-			if (!currentBoard.getWinner().isEmpty()) {
-				gameOver = true;
-			}
 			for (Observer observer : observers) {
 				if (gameOver) {
 					observer.onModelChanged(currentBoard, Observer.Event.GAME_OVER);
