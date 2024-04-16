@@ -230,7 +230,10 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			for (Piece player : remaining) {
 				if (mrX.piece().equals(player)) {
 					allAvailableMoves.addAll(makeSingleMoves(setup, detectives, mrX, mrX.location()));
-					allAvailableMoves.addAll(makeDoubleMoves(setup, detectives, mrX, mrX.location()));
+					// mrX can't make a double move if there is only 1 log space left
+					if (log.size() <= setup.moves.size()-2) {
+						allAvailableMoves.addAll(makeDoubleMoves(setup, detectives, mrX, mrX.location()));
+					}
 				} else {
 					for (Player det : detectives) {
 						if (det.piece().equals(player)) {
