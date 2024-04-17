@@ -2,15 +2,15 @@ package uk.ac.bris.cs.scotlandyard.ui.ai;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.graph.ImmutableValueGraph;
 import io.atlassian.fugue.Pair;
-import uk.ac.bris.cs.scotlandyard.model.Ai;
-import uk.ac.bris.cs.scotlandyard.model.Board;
-import uk.ac.bris.cs.scotlandyard.model.Move;
-import uk.ac.bris.cs.scotlandyard.model.ScotlandYard;
+import uk.ac.bris.cs.scotlandyard.model.*;
+import uk.ac.bris.cs.scotlandyard.model.Piece.Detective;
 
 public class MyAi implements Ai {
 
@@ -49,39 +49,53 @@ public class MyAi implements Ai {
 	}
 
 	public static int minimax(ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph,
-							  int source, Set<Integer> detectives, int depth, boolean isMax, Board board) {
-		if (depth == 0 || board.getWinner().isEmpty()) {
-			return getScore(graph, source, detectives);
+							  int source, int depth, boolean isMax, Board board) {
+		if (depth == 0) {
+			return getScore(graph, source, board);
 		}
 
 		if (isMax) {
 			int bestValue = Integer.MIN_VALUE;
+			//Move bestMove;
 			for (Move move : board.getAvailableMoves()) {
-				bestValue = Math.max(bestValue, minimax(graph, move.source(), detectives, depth - 1, true, board));
+				int newValue = Math.max(bestValue, minimax(graph, move.source(),depth - 1, true, board));
+				if (newValue > bestValue){
+					bestValue = newValue;
+					//bestMove = move;
+				}
 			}
 			return bestValue;
 		} else {
 			int bestValue = Integer.MAX_VALUE;
+			//Move bestMove;
 			for (Move move : board.getAvailableMoves()) {
-				bestValue = Math.min(bestValue, minimax(graph, move.source(), detectives, depth - 1, false, board));
+				int newValue = Math.min(bestValue, minimax(graph, move.source(),depth - 1, false, board));
+				if (newValue < bestValue){
+					bestValue = newValue;
+					//bestMove = move;
+				}
 			}
 			return bestValue;
 		}
 	}
 
 	private static int getScore(ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph,
-										int source, Set<Integer> detectives) {
-		// Evaluation function: Negative distance to the closest detective
-		int shortestDistance = Integer.MAX_VALUE;
-		for (Integer detective : detectives) {
-			int distance = dijkstra(graph, source, detective);
-			shortestDistance = Math.min(shortestDistance, distance);
+										int source, Board board) {
+		int score = 0;
+        Set<Piece> detPieces = new HashSet<>(board.getPlayers().stream().filter(Piece::isDetective).toList());
+
+		for (Piece detective : detPieces) {
+			if (board.getDetectiveLocation((Detective) detective).isPresent()) {
+				int distance = dijkstra(graph, source, board.getDetectiveLocation((Detective) detective).get());
+				score += distance;
+			}
 		}
-		return -shortestDistance;
+
+		return score;
 	}
 
 
-	@Nonnull @Override public String name() { return "Name me!"; }
+	@Nonnull @Override public String name() { return "Sophia"; }
 
 	@Nonnull @Override public Move pickMove(
 			@Nonnull Board board,
