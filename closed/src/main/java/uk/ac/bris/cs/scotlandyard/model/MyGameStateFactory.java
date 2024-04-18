@@ -130,7 +130,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		//
 		// METHODS //
 		//
-		// returns setup
+		// Returns setup
 		@Override public GameSetup getSetup() {  return setup; }
 
 		// Creates an immutable set of all pieces taking a part in the game
@@ -438,10 +438,10 @@ public final class MyGameStateFactory implements Factory<GameState> {
 				SingleMoveSetSecond = makeSingleMoves(setup, detectives, mrX, singleMove1.destination);
 				for (SingleMove singleMove2 : SingleMoveSetSecond) {
 					if (mrX.has(Ticket.DOUBLE)) {
-						// sets condition to check has enough tickets and it's not a reveal move to produce a double move
+						// sets condition to check if has enough tickets and  max amount of moves available to produce a double move
 						if (((singleMove1.ticket != singleMove2.ticket)
-						|| (singleMove1.ticket == singleMove2.ticket && mrX.hasAtLeast(singleMove2.ticket, 2)))
-						&& (setup.moves.size()>=2)){
+						|| (mrX.hasAtLeast(singleMove2.ticket, 2)))
+						&& (setup.moves.size()>=2)) {
 							DoubleMoveSet.add(new DoubleMove(mrX.piece(), source, singleMove1.ticket, singleMove1.destination,
 								singleMove2.ticket, singleMove2.destination));
 						}
