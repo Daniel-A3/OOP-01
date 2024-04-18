@@ -44,24 +44,36 @@ public class MyAi implements Ai {
 				}
 			}
 		}
-
+		// Target can't be reached
 		return -1;
 	}
 
-	public static int minimax(ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph,
-							  int source, int depth, boolean isMax, Board board) {
+	public static int minimax(int source, int depth, boolean isMax, Board board) {
+		ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph = board.getSetup().graph;
+
 		if (depth == 0) {
 			return getScore(graph, source, board);
 		}
 
 		if (isMax) {
 			int bestValue = Integer.MIN_VALUE;
-			//Move bestMove;
+			Move bestMove;
 			for (Move move : board.getAvailableMoves()) {
-				int newValue = Math.max(bestValue, minimax(graph, move.source(),depth - 1, true, board));
+				int target = move.accept(new Move.Visitor<>() {
+                    @Override
+                    public Integer visit(Move.SingleMove move) {
+                        return move.destination;
+                    }
+
+                    @Override
+                    public Integer visit(Move.DoubleMove move) {
+                        return move.destination2;
+                    }
+                });
+				int newValue = Math.max(bestValue, minimax(target,depth - 1, false, board));
 				if (newValue > bestValue){
 					bestValue = newValue;
-					//bestMove = move;
+					bestMove = move;
 				}
 			}
 			return bestValue;
@@ -69,7 +81,18 @@ public class MyAi implements Ai {
 			int bestValue = Integer.MAX_VALUE;
 			//Move bestMove;
 			for (Move move : board.getAvailableMoves()) {
-				int newValue = Math.min(bestValue, minimax(graph, move.source(),depth - 1, false, board));
+				int target = move.accept(new Move.Visitor<>() {
+                    @Override
+                    public Integer visit(Move.SingleMove move) {
+                        return move.destination;
+                    }
+
+                    @Override
+                    public Integer visit(Move.DoubleMove move) {
+                        return move.destination2;
+                    }
+                });
+				int newValue = Math.min(bestValue, minimax(target,depth - 1, true, board));
 				if (newValue < bestValue){
 					bestValue = newValue;
 					//bestMove = move;
@@ -81,13 +104,12 @@ public class MyAi implements Ai {
 
 	private static int getScore(ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph,
 										int source, Board board) {
-		int score = 0;
+		int score = Integer.MAX_VALUE;
         Set<Piece> detPieces = new HashSet<>(board.getPlayers().stream().filter(Piece::isDetective).toList());
-
 		for (Piece detective : detPieces) {
 			if (board.getDetectiveLocation((Detective) detective).isPresent()) {
 				int distance = dijkstra(graph, source, board.getDetectiveLocation((Detective) detective).get());
-				score += distance;
+				if ( distance<score ) score = distance;
 			}
 		}
 
@@ -102,11 +124,31 @@ public class MyAi implements Ai {
 			Pair<Long, TimeUnit> timeoutPair) {
 		// returns a random move, replace with your own implementation
 		var moves = board.getAvailableMoves().asList();
+		int depth = 1;
 
-		for (var move : moves) {
+		int bestValue = Integer.MIN_VALUE;
+		Move bestMove = null;
+		for (Move move : moves) {
+			int target = move.accept(new Move.Visitor<>() {
+				@Override
+				public Integer visit(Move.SingleMove move) {
+					return move.destination;
+				}
 
+				@Override
+				public Integer visit(Move.DoubleMove move) {
+					return move.destination2;
+				}
+			});
+			int newValue = Math.max(bestValue, minimax(target, depth - 1, false, board));
+			if (newValue > bestValue) {
+				bestValue = newValue;
+				bestMove = move;
+			}
 		}
 
-		return moves.get(new Random().nextInt(moves.size()));
+		if (bestMove != null) { return bestMove; }
+		//return moves.get(new Random().nextInt(moves.size()));
+		else { return moves.get(new Random().nextInt(moves.size())); }
 	}
 }
