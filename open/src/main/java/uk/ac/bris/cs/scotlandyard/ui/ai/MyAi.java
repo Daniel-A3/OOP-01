@@ -6,6 +6,8 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.graph.ImmutableValueGraph;
 import io.atlassian.fugue.Pair;
@@ -92,7 +94,7 @@ public class MyAi implements Ai {
                         return move.destination2;
                     }
                 });
-				int newValue = Math.min(bestValue, minimax(target,depth - 1, true, board));
+				int newValue = Math.min(bestValue, minimax(,target,depth - 1, true, board));
 				if (newValue < bestValue){
 					bestValue = newValue;
 					//bestMove = move;
@@ -106,6 +108,8 @@ public class MyAi implements Ai {
 										int source, Board board) {
 		int score = Integer.MAX_VALUE;
         Set<Piece> detPieces = new HashSet<>(board.getPlayers().stream().filter(Piece::isDetective).toList());
+		Set<List<Integer>> detDestinations;
+
 		for (Piece detective : detPieces) {
 			if (board.getDetectiveLocation((Detective) detective).isPresent()) {
 				int distance = dijkstra(graph, source, board.getDetectiveLocation((Detective) detective).get());
@@ -122,10 +126,28 @@ public class MyAi implements Ai {
 	@Nonnull @Override public Move pickMove(
 			@Nonnull Board board,
 			Pair<Long, TimeUnit> timeoutPair) {
-		// returns a random move, replace with your own implementation
 		var moves = board.getAvailableMoves().asList();
 		int depth = 1;
-
+		List<Player> allDetectives = new ArrayList<>();
+		Set<Piece> players = new HashSet<>(board.getPlayers());
+		Optional<Player> mrX = Optional.empty();
+		for (Piece player : players){
+			Optional<Board.TicketBoard> tickets = board.getPlayerTickets(player);
+			Map<ScotlandYard.Ticket, Integer> specificTicket = new HashMap<>();
+			for (ScotlandYard.Ticket ticket : ScotlandYard.Ticket.values()) {
+				specificTicket.put(ticket, tickets.get().getCount(ticket));
+			}
+			if (player.isDetective()){
+				Optional<Integer> detectiveLocation = board.getDetectiveLocation((Piece.Detective)player);
+				Player newPlayer = new Player(player, (ImmutableMap<ScotlandYard.Ticket, Integer>) specificTicket, detectiveLocation.get());
+				allDetectives.add(newPlayer);
+			} else {
+				int mrXLocation = moves.stream().findFirst().get().source();
+				Player newPlayer = new Player(player, (ImmutableMap<ScotlandYard.Ticket, Integer>) specificTicket, mrXLocation);
+				mrX = Optional.of(newPlayer);
+			}
+		}
+		Board.GameState gameState = new MyGameStateFactory().build(board.getSetup(), mrX.get(), (ImmutableList<Player>) allDetectives);
 		int bestValue = Integer.MIN_VALUE;
 		Move bestMove = null;
 		for (Move move : moves) {
@@ -140,7 +162,7 @@ public class MyAi implements Ai {
 					return move.destination2;
 				}
 			});
-			int newValue = Math.max(bestValue, minimax(target, depth - 1, false, board));
+			int newValue = Math.max(bestValue, minimax(target, depth - 1, true, board));
 			if (newValue > bestValue) {
 				bestValue = newValue;
 				bestMove = move;
