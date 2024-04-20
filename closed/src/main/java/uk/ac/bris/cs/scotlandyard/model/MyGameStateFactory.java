@@ -191,7 +191,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			// Mr X wins if all detectives run out of tickets
 			if (!AllDetHaveNotRunOutOfTickets) { mrXWon = true; }
 
-			// Mr X wins if all detercives run out of legal moves
+			// Mr X wins if all detectives run out of legal moves
 			if (combineAvailableMoves(detectivePieces).isEmpty() && !remaining.contains(mrX.piece())){
 				mrXWon = true;
 			}
