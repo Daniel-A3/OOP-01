@@ -128,6 +128,7 @@ public class MyAi implements Ai {
 			Pair<Long, TimeUnit> timeoutPair) {
 		var moves = board.getAvailableMoves().asList();
 		int depth = 1;
+
 		List<Player> allDetectives = new ArrayList<>();
 		Set<Piece> players = new HashSet<>(board.getPlayers());
 		Optional<Player> mrX = Optional.empty();
@@ -137,17 +138,21 @@ public class MyAi implements Ai {
 			for (ScotlandYard.Ticket ticket : ScotlandYard.Ticket.values()) {
 				specificTicket.put(ticket, tickets.get().getCount(ticket));
 			}
+			ImmutableMap<ScotlandYard.Ticket, Integer> immutableSpecificTicket = ImmutableMap.<ScotlandYard.Ticket, Integer>builder()
+					.putAll(specificTicket)
+					.build();
 			if (player.isDetective()){
 				Optional<Integer> detectiveLocation = board.getDetectiveLocation((Piece.Detective)player);
-				Player newPlayer = new Player(player, (ImmutableMap<ScotlandYard.Ticket, Integer>) specificTicket, detectiveLocation.get());
+				Player newPlayer = new Player(player, immutableSpecificTicket, detectiveLocation.get());
 				allDetectives.add(newPlayer);
 			} else {
 				int mrXLocation = moves.stream().findFirst().get().source();
-				Player newPlayer = new Player(player, (ImmutableMap<ScotlandYard.Ticket, Integer>) specificTicket, mrXLocation);
+				Player newPlayer = new Player(player, immutableSpecificTicket, mrXLocation);
 				mrX = Optional.of(newPlayer);
 			}
 		}
-		Board.GameState gameState = new MyGameStateFactory().build(board.getSetup(), mrX.get(), (ImmutableList<Player>) allDetectives);
+		ImmutableList<Player> detectives = ImmutableList.copyOf(allDetectives);
+		Board.GameState gameState = new MyGameStateFactory().build(board.getSetup(), mrX.get(), detectives);
 		int bestValue = Integer.MIN_VALUE;
 		Move bestMove = null;
 		for (Move move : moves) {
