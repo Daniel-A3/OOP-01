@@ -94,7 +94,7 @@ public class MyAi implements Ai {
                         return move.destination2;
                     }
                 });
-				int newValue = Math.min(bestValue, minimax(,target,depth - 1, true, board));
+				int newValue = Math.min(bestValue, minimax(target,depth - 1, true, board));
 				if (newValue < bestValue){
 					bestValue = newValue;
 					//bestMove = move;
@@ -113,7 +113,7 @@ public class MyAi implements Ai {
 		for (Piece detective : detPieces) {
 			if (board.getDetectiveLocation((Detective) detective).isPresent()) {
 				int distance = dijkstra(graph, source, board.getDetectiveLocation((Detective) detective).get());
-				if ( distance<score ) score = distance;
+				if (distance < score) score = distance;
 			}
 		}
 
