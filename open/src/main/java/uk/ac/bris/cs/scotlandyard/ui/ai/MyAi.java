@@ -50,69 +50,78 @@ public class MyAi implements Ai {
 		return -1;
 	}
 
-	public static int minimax(int source, int depth, boolean isMax, Board board) {
-		ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph = board.getSetup().graph;
-
+	public static int minimax(int mrXLocation , int depth, int alpha, int beta, boolean isMax, Board.GameState gameState) {
+		List<Detective> detectives = detectivePieces(gameState);
 		if (depth == 0) {
-			return getScore(graph, source, board);
+			return getScore(mrXLocation, detectives, gameState);
 		}
-
+		List<List<Move>> detectiveMovesCombinations = detectiveMoveCombination(gameState, mrXLocation);
+		Board.GameState newGameState = gameState;
 		if (isMax) {
 			int bestValue = Integer.MIN_VALUE;
-			Move bestMove;
-			for (Move move : board.getAvailableMoves()) {
-				int target = move.accept(new Move.Visitor<>() {
-                    @Override
-                    public Integer visit(Move.SingleMove move) {
-                        return move.destination;
-                    }
-
-                    @Override
-                    public Integer visit(Move.DoubleMove move) {
-                        return move.destination2;
-                    }
-                });
-				int newValue = Math.max(bestValue, minimax(target,depth - 1, false, board));
-				if (newValue > bestValue){
-					bestValue = newValue;
-					bestMove = move;
+			for (List<Move> moves : detectiveMovesCombinations) {
+				for (Move move : moves) {
+					newGameState = gameState.advance(move);
+					}
+				int newValue = minimax(mrXLocation, depth - 1, alpha, beta,  false, newGameState);
+				bestValue = Math.max(newValue, bestValue);
+				alpha = Math.max(alpha, bestValue);
+				if (beta <= alpha) {
+					break; // Beta cutoff
 				}
 			}
 			return bestValue;
 		} else {
 			int bestValue = Integer.MAX_VALUE;
-			//Move bestMove;
-			for (Move move : board.getAvailableMoves()) {
-				int target = move.accept(new Move.Visitor<>() {
-                    @Override
-                    public Integer visit(Move.SingleMove move) {
-                        return move.destination;
-                    }
-
-                    @Override
-                    public Integer visit(Move.DoubleMove move) {
-                        return move.destination2;
-                    }
-                });
-				int newValue = Math.min(bestValue, minimax(target,depth - 1, true, board));
-				if (newValue < bestValue){
-					bestValue = newValue;
-					//bestMove = move;
+			for (List<Move> moves : detectiveMovesCombinations) {
+				for (Move move : moves) {
+					newGameState = gameState.advance(move);
+					}
+				int newValue = minimax(mrXLocation, depth - 1, alpha, beta, true, newGameState);
+				bestValue = Math.min(newValue, bestValue);
+				if (beta <= alpha) {
+					break; // Alpha cutoff
 				}
 			}
 			return bestValue;
 		}
 	}
 
-	private static int getScore(ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph,
-										int source, Board board) {
+	private static List<List<Move>> detectiveMoveCombination(Board.GameState gameState, int mrXLocation){
+		ImmutableSet<Move> moves = gameState.getAvailableMoves();
+		Piece detective = null;
+		boolean last = false;
+		List<List<Move>> combinedMoves = new ArrayList<>();
+		int source = 0;
+		for (Move move : moves){
+			if (detective == null){
+				detective = move.commencedBy();
+				Piece finalDetective = detective;
+				last = moves.stream().allMatch(move1 -> move1.commencedBy() == finalDetective);
+				source = dijkstra(gameState.getSetup().graph, mrXLocation, getMoveSource(move));
+			}
+			if (move.commencedBy() != detective){ continue; }
+			if (dijkstra(gameState.getSetup().graph, mrXLocation, getMoveDestination(move)) > source){ continue; }
+			Board.GameState advancedGameState = gameState.advance(move);
+			if (last || !advancedGameState.getWinner().isEmpty()) {
+				List<Move> newCombination = new ArrayList<>();
+				newCombination.add(move);
+				combinedMoves.add(newCombination);
+			} else {
+				List<List<Move>> newCombination = detectiveMoveCombination(gameState.advance(move), mrXLocation);
+				for (List<Move> combinations : newCombination) {
+					combinations.add(0, move);
+					combinedMoves.add(combinations);
+				}
+			}
+		}
+		return combinedMoves;
+	}
+	private static int getScore(int mrXLocation, List<Detective> detectives, Board.GameState gameState) {
 		int score = Integer.MAX_VALUE;
-        Set<Piece> detPieces = new HashSet<>(board.getPlayers().stream().filter(Piece::isDetective).toList());
-		Set<List<Integer>> detDestinations;
-
-		for (Piece detective : detPieces) {
-			if (board.getDetectiveLocation((Detective) detective).isPresent()) {
-				int distance = dijkstra(graph, source, board.getDetectiveLocation((Detective) detective).get());
+		for (Detective detective : detectives) {
+			if (gameState.getDetectiveLocation(detective).isPresent()) {
+				int distance = dijkstra(gameState.getSetup().graph, mrXLocation, gameState.getDetectiveLocation(detective).get());
 				if (distance < score) score = distance;
 			}
 		}
@@ -120,7 +129,42 @@ public class MyAi implements Ai {
 		return score;
 	}
 
+	private static List<Detective> detectivePieces(Board.GameState gameState){
+		ImmutableSet<Piece> players = gameState.getPlayers();
+		// returns list of detective pieces
+        return players.stream()
+				.filter(Piece::isDetective)
+				.map(piece -> (Detective) piece)
+				.toList();
+	}
 
+	private static int getMoveSource(Move move){
+		return move.accept(new Move.Visitor<Integer>() {
+			@Override
+			public Integer visit(Move.SingleMove move) {
+				return move.source();
+			}
+
+			@Override
+			public Integer visit(Move.DoubleMove move) {
+				return move.source();
+			}
+		});
+	}
+
+	private static int getMoveDestination(Move move){
+		return move.accept(new Move.Visitor<Integer>() {
+			@Override
+			public Integer visit(Move.SingleMove move) {
+				return move.destination;
+			}
+
+			@Override
+			public Integer visit(Move.DoubleMove move) {
+				return move.destination2;
+			}
+		});
+	}
 	@Nonnull @Override public String name() { return "Sophia"; }
 
 	@Nonnull @Override public Move pickMove(
@@ -156,7 +200,7 @@ public class MyAi implements Ai {
 		int bestValue = Integer.MIN_VALUE;
 		Move bestMove = null;
 		for (Move move : moves) {
-			int target = move.accept(new Move.Visitor<>() {
+			int mrXLocation = move.accept(new Move.Visitor<>() {
 				@Override
 				public Integer visit(Move.SingleMove move) {
 					return move.destination;
@@ -167,7 +211,7 @@ public class MyAi implements Ai {
 					return move.destination2;
 				}
 			});
-			int newValue = Math.max(bestValue, minimax(target, depth - 1, true, board));
+			int newValue = minimax(mrXLocation, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, false, gameState);
 			if (newValue > bestValue) {
 				bestValue = newValue;
 				bestMove = move;
