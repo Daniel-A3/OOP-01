@@ -11,6 +11,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.graph.ImmutableValueGraph;
 import io.atlassian.fugue.Pair;
+import org.controlsfx.control.tableview2.filter.filtereditor.SouthFilter;
 import uk.ac.bris.cs.scotlandyard.model.*;
 import uk.ac.bris.cs.scotlandyard.model.Piece.Detective;
 
@@ -20,7 +21,7 @@ public class MyAi implements Ai {
 	public static Integer dijkstra(ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph,
 								   Integer source, Integer target) {
 		Map<Integer, Integer> distance = new HashMap<>();
-		PriorityQueue<Integer> pq = new PriorityQueue<>();
+		Queue<Integer> pq = new LinkedList<>();
 		Set<Integer> visited = new HashSet<>();
 
 		for (Integer node : graph.nodes()) {
@@ -56,14 +57,11 @@ public class MyAi implements Ai {
 			return getScore(mrXLocation, detectives, gameState);
 		}
 		List<List<Move>> detectiveMovesCombinations = detectiveMoveCombination(gameState, mrXLocation);
-		Board.GameState newGameState = gameState;
+		Board.GameState newGameState;
 		if (isMax) {
 			int bestValue = Integer.MIN_VALUE;
-			for (List<Move> moves : detectiveMovesCombinations) {
-				for (Move move : moves) {
-					newGameState = gameState.advance(move);
-					}
-				int newValue = minimax(mrXLocation, depth - 1, alpha, beta,  false, newGameState);
+			for (Move move : gameState.getAvailableMoves()) {
+				int newValue = minimax(mrXLocation, depth - 1, alpha, beta,  false, gameState.advance(move));
 				bestValue = Math.max(newValue, bestValue);
 				alpha = Math.max(alpha, bestValue);
 				if (beta <= alpha) {
@@ -74,8 +72,9 @@ public class MyAi implements Ai {
 		} else {
 			int bestValue = Integer.MAX_VALUE;
 			for (List<Move> moves : detectiveMovesCombinations) {
+				newGameState = gameState;
 				for (Move move : moves) {
-					newGameState = gameState.advance(move);
+					newGameState = newGameState.advance(move);
 					}
 				int newValue = minimax(mrXLocation, depth - 1, alpha, beta, true, newGameState);
 				bestValue = Math.min(newValue, bestValue);
@@ -139,33 +138,33 @@ public class MyAi implements Ai {
 	}
 
 	private static int getMoveSource(Move move){
-		return move.accept(new Move.Visitor<Integer>() {
-			@Override
-			public Integer visit(Move.SingleMove move) {
-				return move.source();
-			}
+		return move.accept(new Move.Visitor<>() {
+            @Override
+            public Integer visit(Move.SingleMove move) {
+                return move.source();
+            }
 
-			@Override
-			public Integer visit(Move.DoubleMove move) {
-				return move.source();
-			}
-		});
+            @Override
+            public Integer visit(Move.DoubleMove move) {
+                return move.source();
+            }
+        });
 	}
 
 	private static int getMoveDestination(Move move){
-		return move.accept(new Move.Visitor<Integer>() {
-			@Override
-			public Integer visit(Move.SingleMove move) {
-				return move.destination;
-			}
+		return move.accept(new Move.Visitor<>() {
+            @Override
+            public Integer visit(Move.SingleMove move) {
+                return move.destination;
+            }
 
-			@Override
-			public Integer visit(Move.DoubleMove move) {
-				return move.destination2;
-			}
-		});
+            @Override
+            public Integer visit(Move.DoubleMove move) {
+                return move.destination2;
+            }
+        });
 	}
-	@Nonnull @Override public String name() { return "Sophia"; }
+	@Nonnull @Override public String name() { return "Robot Sophia"; }
 
 	@Nonnull @Override public Move pickMove(
 			@Nonnull Board board,
@@ -199,23 +198,17 @@ public class MyAi implements Ai {
 		Board.GameState gameState = new MyGameStateFactory().build(board.getSetup(), mrX.get(), detectives);
 		int bestValue = Integer.MIN_VALUE;
 		Move bestMove = null;
+		int alpha = Integer.MIN_VALUE;
+		int beta = Integer.MAX_VALUE;
 		for (Move move : moves) {
-			int mrXLocation = move.accept(new Move.Visitor<>() {
-				@Override
-				public Integer visit(Move.SingleMove move) {
-					return move.destination;
-				}
-
-				@Override
-				public Integer visit(Move.DoubleMove move) {
-					return move.destination2;
-				}
-			});
-			int newValue = minimax(mrXLocation, depth, Integer.MIN_VALUE, Integer.MAX_VALUE, false, gameState);
+			int mrXDestination = getMoveDestination(move);
+			int newValue = minimax(mrXDestination, depth, alpha, beta, false, gameState.advance(move));
+			alpha = Math.max(alpha, newValue);
 			if (newValue > bestValue) {
 				bestValue = newValue;
 				bestMove = move;
 			}
+			System.out.println(move+ ", " + newValue);
 		}
 
 		if (bestMove != null) { return bestMove; }
