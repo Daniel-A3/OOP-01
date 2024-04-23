@@ -380,7 +380,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			newLog.addAll(addLog);
 			log = ImmutableList.copyOf(newLog);
 		}
-		@Override public GameState advance(Move move){
+		@Nonnull @Override public GameState advance(Move move){
 			if (!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
 			if (!winner.isEmpty()) throw new IllegalArgumentException("Game is Over!");
 			updateLocation(move);
