@@ -19,6 +19,7 @@ import uk.ac.bris.cs.scotlandyard.model.ScotlandYard.Factory;
 public final class MyGameStateFactory implements Factory<GameState> {
 
 	private final class MyGameState implements GameState {
+		// Class attributes
 		private GameSetup setup;
 		private ImmutableSet<Piece> remaining;
 		private ImmutableList<LogEntry> log;
@@ -27,6 +28,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		private ImmutableSet<Move> moves;
 		private ImmutableSet<Piece> winner;
 
+		// Constructor for MyGameState, includes input validation.
 		private MyGameState(
 				final GameSetup setup,
 				final ImmutableSet<Piece> remaining,
@@ -380,7 +382,9 @@ public final class MyGameStateFactory implements Factory<GameState> {
 			newLog.addAll(addLog);
 			log = ImmutableList.copyOf(newLog);
 		}
-		@Override public GameState advance(Move move){
+
+		// Updates the game state, returns a new instance of MyGameState with modified parameters.
+		@Nonnull @Override public GameState advance(Move move){
 			if (!moves.contains(move)) throw new IllegalArgumentException("Illegal move: "+move);
 			if (!winner.isEmpty()) throw new IllegalArgumentException("Game is Over!");
 			updateLocation(move);
