@@ -2,6 +2,7 @@ package uk.ac.bris.cs.scotlandyard.ui.ai;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 import com.google.common.collect.ImmutableList;
@@ -70,7 +71,6 @@ public class MyAi implements Ai {
 			Integer current = pq.poll();
 			if (!visited.contains(current)) {
 				if (targets.contains(current)) {
-					//System.out.println("Distance " + distance.get(current));
 					return distance.get(current);
 				}
 				visited.add(current);
@@ -95,17 +95,19 @@ public class MyAi implements Ai {
 		Board.GameState newGameState;
 		if (isMax) {
 			int bestValue = Integer.MIN_VALUE;
-			Set<Move> bestMrXMoves = bestMrxMoves(gameState, mrXLocation);
-			for (Move move : bestMrXMoves) {
-				if (dijkstraFirstDetective(gameState.advance(move), getMoveDestination(move), detectivePieces(gameState.advance(move)))
-				    > dijkstraFirstDetective(gameState, mrXLocation, detectivePieces(gameState))) {
-
-					int newValue = minimax(mrXLocation, depth - 1, alpha, beta, false, gameState.advance(move));
-					bestValue = Math.max(newValue, bestValue);
-					alpha = Math.max(alpha, bestValue);
-					if (beta <= alpha) {
-						break; // Beta cutoff
-					}
+			Set<Move> mrXMoves = new HashSet<>();
+			for (Move singleMove : gameState.getAvailableMoves()) {
+				if (checkIfDouble(singleMove) == 1){
+					mrXMoves.add(singleMove);
+				}
+			}
+			if (mrXMoves.isEmpty()) { mrXMoves = gameState.getAvailableMoves(); }
+			for (Move move : mrXMoves) {
+				int newValue = minimax(getMoveDestination(move), depth - 1, alpha, beta, false, gameState.advance(move));
+				bestValue = Math.max(newValue, bestValue);
+				alpha = Math.max(alpha, bestValue);
+				if (beta <= alpha) {
+					break; // Beta cutoff
 				}
 			}
 			return bestValue;
@@ -127,17 +129,6 @@ public class MyAi implements Ai {
 		}
 	}
 
-	private static Set<Move> bestMrxMoves(Board.GameState gameState, int mrXLocation){
-		Set<Move> bestMoves = new HashSet<>();
-		List<Detective> detectives = detectivePieces(gameState);
-		for (Move move : gameState.getAvailableMoves()) {
-			if (dijkstraFirstDetective(gameState, mrXLocation, detectives) <=
-			dijkstraFirstDetective(gameState.advance(move), getMoveDestination(move), detectives)){
-				bestMoves.add(move);
-			}
-		}
-		return bestMoves;
-	}
 	// Creates list of combinations of detective moves
 	private static List<List<Move>> detectiveMoveCombination(Board.GameState gameState, int mrXLocation){
 		ImmutableSet<Move> moves = gameState.getAvailableMoves();
@@ -176,7 +167,6 @@ public class MyAi implements Ai {
 	}
 	// Returns the board score
 	private static int getScore(int mrXLocation, List<Detective> detectives, Board.GameState gameState) {
-		//System.out.println("Score " + dijkstraFirstDetective(gameState, mrXLocation, detectives));
 		return dijkstraFirstDetective(gameState, mrXLocation, detectives);
 	}
 
@@ -220,21 +210,17 @@ public class MyAi implements Ai {
 		});
 	}
 
-	private static Set<ScotlandYard.Ticket> checkIfDouble (Move move){
+	private static int checkIfDouble (Move move){
 		return move.accept(new Move.Visitor<>() {
 			@Override
-			public Set<ScotlandYard.Ticket> visit(Move.SingleMove move) {
-				Set<ScotlandYard.Ticket> tickets = new HashSet<>();
-				tickets.add(move.ticket);
-				return tickets;
+			public Integer visit(Move.SingleMove move) {
+
+				return 1;
 			}
 
 			@Override
-			public Set<ScotlandYard.Ticket> visit(Move.DoubleMove move) {
-				Set<ScotlandYard.Ticket> tickets = new HashSet<>();
-				tickets.add(move.ticket1);
-				tickets.add(move.ticket2);
-				return tickets;
+			public Integer visit(Move.DoubleMove move) {
+				return 2;
 			}
 		});
 	}
@@ -254,30 +240,6 @@ public class MyAi implements Ai {
         });
 	}
 
-
-	/*
-	// Implementing the decorator design pattern to add functionality to the move class (a score attribute)
-	public static class MoveDecorator implements Move {
-		private Move move;
-		private int score;
-
-		public MoveDecorator(Move move) {
-			this.move = move;
-		}
-
-		public int getScore() { return score; }
-
-		public void setScore(int score) { this.score = score; }
-
-		@Nonnull @Override public Piece commencedBy() { return move.commencedBy(); }
-
-		@Nonnull @Override public Iterable<ScotlandYard.Ticket> tickets() { return move.tickets(); }
-
-		@Override public int source() { return move.source(); }
-
-		@Override public <T> T accept(Visitor<T> visitor) { return move.accept(visitor); }
-	}
-	*/
 
 	@Nonnull @Override public String name() { return "Robot Sophia"; }
 
@@ -302,7 +264,7 @@ public class MyAi implements Ai {
 					.putAll(specificTicket)
 					.build();
 			if (player.isDetective()){
-				Optional<Integer> detectiveLocation = board.getDetectiveLocation((Piece.Detective)player);
+				Optional<Integer> detectiveLocation = board.getDetectiveLocation((Detective)player);
 				Player newPlayer = new Player(player, immutableSpecificTicket, detectiveLocation.get());
 				allDetectives.add(newPlayer);
 			} else {
@@ -319,9 +281,18 @@ public class MyAi implements Ai {
 		int alpha = Integer.MIN_VALUE;
 		int beta = Integer.MAX_VALUE;
 
+		Set<Move> mrXMoves = new HashSet<>();
+		if ((dijkstraFirstDetective(gameState, mrX.get().location(), detectivePieces(gameState)) > 2) &&
+				(moves.stream().anyMatch(move -> checkIfDouble(move) == 2))) {
+			for (Move move : moves) {
+				if (checkIfDouble(move) == 1){
+					mrXMoves.add(move);
+				}
+			}
+		} else { mrXMoves = new HashSet<>(moves); }
 		// Finds the best scored moves for MrX to take
 		// Adds all the best moves to a list
-		for (Move move : moves) {
+		for (Move move : mrXMoves) {
 			int mrXDestination = getMoveDestination(move);
 			int newScore = minimax(mrXDestination, depth, alpha, beta, false, gameState.advance(move));
 			alpha = Math.max(alpha, newScore);
@@ -338,26 +309,6 @@ public class MyAi implements Ai {
 		}
 
 		if (!bestMoves.isEmpty()) {
-
-
-//				Set<ScotlandYard.Ticket> moveTickets = getMoveTicket(move);
-//				 Checks if a move is a double move
-//				 Decreases the score of double moves so that MrX is incentivised to only use them when necessary
-//				Set<ScotlandYard.Ticket> moveTickets = getMoveTicket(move);
-//				if (moveTickets.size() == 2) {
-//					if (!gameState.getSetup().moves.get(gameState.getMrXTravelLog().size())) {
-//
-//					}
-//				}
-//			}
-//			if (!bestMoves.stream().allMatch(move1 -> checkIfDouble(move1).size() == 2)){
-//				bestMoves = bestMoves.stream().filter(move1 -> checkIfDouble(move1).size() == 1).toList();
-//			}
-//			if (bestMoves.stream().anyMatch(move1 -> gameState.getSetup()
-//					.graph.edgeValue(getMoveSource(move1), getMoveDestination(move1))
-//					.stream().anyMatch(set -> set.contains(ScotlandYard.Transport.UNDERGROUND)))){
-//				bestMoves = bestMoves.stream().filter(move1 -> ((List<ScotlandYard.Ticket>) move1.tickets()).contains(ScotlandYard.Ticket.UNDERGROUND)).toList();
-//			}
 
 			System.out.println(bestMoves);
             return bestMoves.get(new Random().nextInt(bestMoves.size()));
