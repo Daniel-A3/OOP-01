@@ -300,7 +300,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 
 		// Updates players location after they make a move
 		public void updateLocation(Move move){
-			// Uses visitor pattern to access private fields
+			// Uses visitor design pattern to access private fields
 			int newLocation = move.accept(new Visitor<Integer>(){
 				// Check whether it's a single or double move
 				@Override public Integer visit(SingleMove singleMove){ return singleMove.destination; }
@@ -322,7 +322,7 @@ public final class MyGameStateFactory implements Factory<GameState> {
 		// Updates Tickets of the player that made a given move
 		public void updateTickets(Move move, Player current){
 			int doubleTicket  = 0;
-			// Uses visitor pattern to access private fields
+			// Uses visitor design pattern to access private fields
 			Iterable<Ticket> tickets = move.accept(new Visitor<Iterable<Ticket>>() {
 				// Check whether it's a single or double move
 				@Override public Iterable<Ticket> visit(SingleMove singleMove) {
