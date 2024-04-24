@@ -49,6 +49,44 @@ public class MyAi implements Ai {
 		return -1;
 	}
 
+	public static Integer dijkstraFirstDetective(Board.GameState gameState,
+												 Integer source, List<Detective> detectives) {
+		Map<Integer, Integer> distance = new HashMap<>();
+		Queue<Integer> pq = new LinkedList<>();
+		Set<Integer> visited = new HashSet<>();
+		ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph = gameState.getSetup().graph;
+		Set<Integer> targets = new HashSet<>();
+		for (Detective detective : detectives) {
+			targets.add(gameState.getDetectiveLocation(detective).get());
+		}
+
+		for (Integer node : graph.nodes()) {
+			distance.put(node, Integer.MAX_VALUE);
+		}
+		distance.put(source, 0);
+		pq.add(source);
+
+		while (!pq.isEmpty()) {
+			Integer current = pq.poll();
+			if (!visited.contains(current)) {
+				if (targets.contains(current)) {
+					//System.out.println("Distance " + distance.get(current));
+					return distance.get(current);
+				}
+				visited.add(current);
+				for (Integer adjacent : graph.adjacentNodes(current)) {
+					int newDistance = distance.get(current) + 1;
+					if (newDistance < distance.get(adjacent)) {
+						distance.put(adjacent, newDistance);
+						pq.add(adjacent);
+					}
+				}
+			}
+		}
+		// Target can't be reached
+		return -1;
+	}
+
 	// Minimax algorithm to pick the best board score for Mrx/Detectives
 	public static int minimax(int mrXLocation , int depth, int alpha, int beta, boolean isMax, Board.GameState gameState) {
 		if (depth == 0) {
@@ -57,12 +95,17 @@ public class MyAi implements Ai {
 		Board.GameState newGameState;
 		if (isMax) {
 			int bestValue = Integer.MIN_VALUE;
-			for (Move move : gameState.getAvailableMoves()) {
-				int newValue = minimax(mrXLocation, depth - 1, alpha, beta,  false, gameState.advance(move));
-				bestValue = Math.max(newValue, bestValue);
-				alpha = Math.max(alpha, bestValue);
-				if (beta <= alpha) {
-					break; // Beta cutoff
+			Set<Move> bestMrXMoves = bestMrxMoves(gameState, mrXLocation);
+			for (Move move : bestMrXMoves) {
+				if (dijkstraFirstDetective(gameState.advance(move), getMoveDestination(move), detectivePieces(gameState.advance(move)))
+				    > dijkstraFirstDetective(gameState, mrXLocation, detectivePieces(gameState))) {
+
+					int newValue = minimax(mrXLocation, depth - 1, alpha, beta, false, gameState.advance(move));
+					bestValue = Math.max(newValue, bestValue);
+					alpha = Math.max(alpha, bestValue);
+					if (beta <= alpha) {
+						break; // Beta cutoff
+					}
 				}
 			}
 			return bestValue;
@@ -84,6 +127,17 @@ public class MyAi implements Ai {
 		}
 	}
 
+	private static Set<Move> bestMrxMoves(Board.GameState gameState, int mrXLocation){
+		Set<Move> bestMoves = new HashSet<>();
+		List<Detective> detectives = detectivePieces(gameState);
+		for (Move move : gameState.getAvailableMoves()) {
+			if (dijkstraFirstDetective(gameState, mrXLocation, detectives) <=
+			dijkstraFirstDetective(gameState.advance(move), getMoveDestination(move), detectives)){
+				bestMoves.add(move);
+			}
+		}
+		return bestMoves;
+	}
 	// Creates list of combinations of detective moves
 	private static List<List<Move>> detectiveMoveCombination(Board.GameState gameState, int mrXLocation){
 		ImmutableSet<Move> moves = gameState.getAvailableMoves();
@@ -92,24 +146,27 @@ public class MyAi implements Ai {
 		List<List<Move>> combinedMoves = new ArrayList<>();
 		int source = 0;
 		for (Move move : moves){
-			if (detective == null){
-				detective = move.commencedBy();
-				Piece finalDetective = detective;
-				last = moves.stream().allMatch(move1 -> move1.commencedBy() == finalDetective);
-				source = dijkstra(gameState.getSetup().graph, mrXLocation, getMoveSource(move));
-			}
-			if (move.commencedBy() == detective) {
-				if (!(dijkstra(gameState.getSetup().graph, mrXLocation, getMoveDestination(move)) > source)) {
-					Board.GameState advancedGameState = gameState.advance(move);
-					if (last || !advancedGameState.getWinner().isEmpty()) {
-						List<Move> newCombination = new ArrayList<>();
-						newCombination.add(move);
-						combinedMoves.add(newCombination);
-					} else {
-						List<List<Move>> newCombination = detectiveMoveCombination(gameState.advance(move), mrXLocation);
-						for (List<Move> combinations : newCombination) {
-							combinations.add(0, move);
-							combinedMoves.add(combinations);
+
+			if (combinedMoves.size() < 2){
+				if (detective == null) {
+					detective = move.commencedBy();
+					Piece finalDetective = detective;
+					last = moves.stream().allMatch(move1 -> move1.commencedBy() == finalDetective);
+					source = dijkstra(gameState.getSetup().graph, mrXLocation, getMoveSource(move));
+				}
+				if (move.commencedBy() == detective) {
+					if (!(dijkstra(gameState.getSetup().graph, mrXLocation, getMoveDestination(move)) > source)) {
+						Board.GameState advancedGameState = gameState.advance(move);
+						if (last || !advancedGameState.getWinner().isEmpty()) {
+							List<Move> newCombination = new ArrayList<>();
+							newCombination.add(move);
+							combinedMoves.add(newCombination);
+						} else {
+							List<List<Move>> newCombination = detectiveMoveCombination(gameState.advance(move), mrXLocation);
+							for (List<Move> combinations : newCombination) {
+								combinations.add(0, move);
+								combinedMoves.add(combinations);
+							}
 						}
 					}
 				}
@@ -119,13 +176,8 @@ public class MyAi implements Ai {
 	}
 	// Returns the board score
 	private static int getScore(int mrXLocation, List<Detective> detectives, Board.GameState gameState) {
-		int score = 0;
-		for (Detective detective : detectives) {
-			if (gameState.getDetectiveLocation(detective).isPresent()) {
-				score += dijkstra(gameState.getSetup().graph, mrXLocation, gameState.getDetectiveLocation(detective).get());
-			}
-		}
-		return score;
+		//System.out.println("Score " + dijkstraFirstDetective(gameState, mrXLocation, detectives));
+		return dijkstraFirstDetective(gameState, mrXLocation, detectives);
 	}
 
 	// Returns list of detectives (pieces)
@@ -234,7 +286,7 @@ public class MyAi implements Ai {
 			@Nonnull Board board,
 			Pair<Long, TimeUnit> timeoutPair) {
 		var moves = board.getAvailableMoves().asList();
-		int depth = 1;
+		int depth = 3;
 
 		List<Player> allDetectives = new ArrayList<>();
 		Set<Piece> players = new HashSet<>(board.getPlayers());
@@ -282,12 +334,12 @@ public class MyAi implements Ai {
 			else if (newScore == bestScore) {
 				bestMoves.add(move);
 			}
-			System.out.println(bestScore);
+			System.out.println("Best score " + bestScore);
 		}
 
 		if (!bestMoves.isEmpty()) {
 
-//			for (Move move : bestMoves) {
+
 //				Set<ScotlandYard.Ticket> moveTickets = getMoveTicket(move);
 //				 Checks if a move is a double move
 //				 Decreases the score of double moves so that MrX is incentivised to only use them when necessary
@@ -298,7 +350,6 @@ public class MyAi implements Ai {
 //					}
 //				}
 //			}
-			System.out.println(bestMoves);
 //			if (!bestMoves.stream().allMatch(move1 -> checkIfDouble(move1).size() == 2)){
 //				bestMoves = bestMoves.stream().filter(move1 -> checkIfDouble(move1).size() == 1).toList();
 //			}
@@ -309,7 +360,9 @@ public class MyAi implements Ai {
 //			}
 
 			System.out.println(bestMoves);
-			return bestMoves.get(new Random().nextInt(bestMoves.size()));
+            return bestMoves.get(new Random().nextInt(bestMoves.size()));
+
+			//return bestMoves.get(new Random().nextInt(bestMoves.size()));
 		}
 
 		else { return moves.get(new Random().nextInt(moves.size())); }
