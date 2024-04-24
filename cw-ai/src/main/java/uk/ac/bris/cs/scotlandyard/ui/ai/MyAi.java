@@ -90,7 +90,6 @@ public class MyAi implements Ai {
 	// Minimax algorithm to pick the best board score for Mrx/Detectives
 	public static int minimax(int mrXLocation , int depth, int alpha, int beta, boolean isMax, Board.GameState gameState) {
 		if (depth == 0) {
-			System.out.println("SCORE " + getScore(mrXLocation, detectivePieces(gameState), gameState));
 			return getScore(mrXLocation, detectivePieces(gameState), gameState);
 		}
 		Board.GameState newGameState;
@@ -318,7 +317,6 @@ public class MyAi implements Ai {
 			} else if (!bestMoves.stream().allMatch(move -> getMoveTicket(move).equals(ScotlandYard.Ticket.SECRET))) {
 				bestMoves = bestMoves.stream().filter(move -> !getMoveTicket(move).equals(ScotlandYard.Ticket.SECRET)).toList();
 			}
-			System.out.println(bestMoves);
             return bestMoves.get(new Random().nextInt(bestMoves.size()));
 
 		}
