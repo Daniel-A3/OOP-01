@@ -16,7 +16,7 @@ import uk.ac.bris.cs.scotlandyard.model.Piece.Detective;
 
 public class MyAi implements Ai {
 
-// Dijkstra algorithm to find the distance from mrX location to a given detective location
+	// Dijkstra algorithm to find the distance from mrX location to a given detective location
 	public static Integer dijkstra(ImmutableValueGraph<Integer, ImmutableSet<ScotlandYard.Transport>> graph,
 								   Integer source, Integer target) {
 		Map<Integer, Integer> distance = new HashMap<>();
@@ -49,7 +49,7 @@ public class MyAi implements Ai {
 		// Target can't be reached
 		return -1;
 	}
-
+	// Modified dijkstra algorithm that stops when it finds the first closest detective
 	public static Integer dijkstraFirstDetective(Board.GameState gameState,
 												 Integer source, List<Detective> detectives) {
 		Map<Integer, Integer> distance = new HashMap<>();
@@ -90,19 +90,13 @@ public class MyAi implements Ai {
 	// Minimax algorithm to pick the best board score for Mrx/Detectives
 	public static int minimax(int mrXLocation , int depth, int alpha, int beta, boolean isMax, Board.GameState gameState) {
 		if (depth == 0) {
+			System.out.println("SCORE " + getScore(mrXLocation, detectivePieces(gameState), gameState));
 			return getScore(mrXLocation, detectivePieces(gameState), gameState);
 		}
 		Board.GameState newGameState;
 		if (isMax) {
 			int bestValue = Integer.MIN_VALUE;
-			Set<Move> mrXMoves = new HashSet<>();
-			for (Move singleMove : gameState.getAvailableMoves()) {
-				if (checkIfDouble(singleMove) == 1){
-					mrXMoves.add(singleMove);
-				}
-			}
-			if (mrXMoves.isEmpty()) { mrXMoves = gameState.getAvailableMoves(); }
-			for (Move move : mrXMoves) {
+			for (Move move : gameState.getAvailableMoves()) {
 				int newValue = minimax(getMoveDestination(move), depth - 1, alpha, beta, false, gameState.advance(move));
 				bestValue = Math.max(newValue, bestValue);
 				alpha = Math.max(alpha, bestValue);
@@ -116,9 +110,10 @@ public class MyAi implements Ai {
 			int bestValue = Integer.MAX_VALUE;
 			for (List<Move> moves : detectiveMovesCombinations) {
 				newGameState = gameState;
+				// Updates the gamestate for mrX's turn after all detectives do their move from the combination
 				for (Move move : moves) {
 					newGameState = newGameState.advance(move);
-					}
+				}
 				int newValue = minimax(mrXLocation, depth - 1, alpha, beta, true, newGameState);
 				bestValue = Math.min(newValue, bestValue);
 				if (beta <= alpha) {
@@ -137,7 +132,7 @@ public class MyAi implements Ai {
 		List<List<Move>> combinedMoves = new ArrayList<>();
 		int source = 0;
 		for (Move move : moves){
-
+			// Allows only 2 detective move combinations since all of them are going to be the worst outcome for mrX
 			if (combinedMoves.size() < 2){
 				if (detective == null) {
 					detective = move.commencedBy();
@@ -146,13 +141,16 @@ public class MyAi implements Ai {
 					source = dijkstra(gameState.getSetup().graph, mrXLocation, getMoveSource(move));
 				}
 				if (move.commencedBy() == detective) {
+					// Checks if move is going to get detective closer to mrX
 					if (!(dijkstra(gameState.getSetup().graph, mrXLocation, getMoveDestination(move)) > source)) {
 						Board.GameState advancedGameState = gameState.advance(move);
+						// If it's the last detective in the list - we create a new combination
 						if (last || !advancedGameState.getWinner().isEmpty()) {
 							List<Move> newCombination = new ArrayList<>();
 							newCombination.add(move);
 							combinedMoves.add(newCombination);
 						} else {
+							// Add a move to combination of other detective moves
 							List<List<Move>> newCombination = detectiveMoveCombination(gameState.advance(move), mrXLocation);
 							for (List<Move> combinations : newCombination) {
 								combinations.add(0, move);
@@ -210,6 +208,7 @@ public class MyAi implements Ai {
 		});
 	}
 
+	// check if move is a double move
 	private static int checkIfDouble (Move move){
 		return move.accept(new Move.Visitor<>() {
 			@Override
@@ -254,6 +253,7 @@ public class MyAi implements Ai {
 		Set<Piece> players = new HashSet<>(board.getPlayers());
 		Optional<Player> mrX = Optional.empty();
 
+		// Creates a game state for the current board to them use it for advance method
 		for (Piece player : players){
 			Optional<Board.TicketBoard> tickets = board.getPlayerTickets(player);
 			Map<ScotlandYard.Ticket, Integer> specificTicket = new HashMap<>();
@@ -281,22 +281,24 @@ public class MyAi implements Ai {
 		int alpha = Integer.MIN_VALUE;
 		int beta = Integer.MAX_VALUE;
 
+		// Only includes double moves if the closest detective is 2 or less moves away.
 		Set<Move> mrXMoves = new HashSet<>();
-		if ((dijkstraFirstDetective(gameState, mrX.get().location(), detectivePieces(gameState)) > 2) &&
-				(moves.stream().anyMatch(move -> checkIfDouble(move) == 2))) {
+		if ((dijkstraFirstDetective(gameState, mrX.get().location(), detectivePieces(gameState)) > 2)
+				&& (moves.stream().anyMatch(move -> checkIfDouble(move) == 2))
+				&& (moves.stream().filter(move -> checkIfDouble(move) == 1).anyMatch(move -> dijkstraFirstDetective(gameState, getMoveDestination(move), detectivePieces(gameState)) >= 2))) {
 			for (Move move : moves) {
 				if (checkIfDouble(move) == 1){
 					mrXMoves.add(move);
 				}
 			}
-		} else { mrXMoves = new HashSet<>(moves); }
+		} else {mrXMoves = new HashSet<>(moves); }
 		// Finds the best scored moves for MrX to take
 		// Adds all the best moves to a list
 		for (Move move : mrXMoves) {
 			int mrXDestination = getMoveDestination(move);
 			int newScore = minimax(mrXDestination, depth, alpha, beta, false, gameState.advance(move));
 			alpha = Math.max(alpha, newScore);
-
+			// Adds to the list if the new score is more optimal than or the same as the current score
 			if (newScore > bestScore) {
 				bestMoves = new ArrayList<>();
 				bestScore = newScore;
@@ -305,15 +307,20 @@ public class MyAi implements Ai {
 			else if (newScore == bestScore) {
 				bestMoves.add(move);
 			}
-			System.out.println("Best score " + bestScore);
 		}
 
 		if (!bestMoves.isEmpty()) {
-
+			// Checks if it's the move after reveal move then makes MrX more likely to take a secret move
+			if (!board.getMrXTravelLog().isEmpty()
+					&& board.getSetup().moves.get(board.getMrXTravelLog().size()-1)
+					&& bestMoves.stream().anyMatch(move -> getMoveTicket(move).equals(ScotlandYard.Ticket.SECRET))){
+				bestMoves = bestMoves.stream().filter(move -> getMoveTicket(move).equals(ScotlandYard.Ticket.SECRET)).toList();
+			} else if (!bestMoves.stream().allMatch(move -> getMoveTicket(move).equals(ScotlandYard.Ticket.SECRET))) {
+				bestMoves = bestMoves.stream().filter(move -> !getMoveTicket(move).equals(ScotlandYard.Ticket.SECRET)).toList();
+			}
 			System.out.println(bestMoves);
             return bestMoves.get(new Random().nextInt(bestMoves.size()));
 
-			//return bestMoves.get(new Random().nextInt(bestMoves.size()));
 		}
 
 		else { return moves.get(new Random().nextInt(moves.size())); }
